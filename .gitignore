@@ -1,9 +1,30 @@
-/.DS_Store
-/Ray_code
-/Training1
-/Training2
-/Training3
-/papers
-/project_proposal
-/telegram_bot
-/wav2vec
+# Modelle & Checkpoints
+models/
+checkpoint-*/
+ray_results/
+whisper-amharic-largev3/
+snap/
+logs-largev3/
+*.bin
+*.pt
+*.safetensors
+*model.safetensors*
+
+# Datensätze & Caches
+*.txt
+*.arpa
+*.zip
+*.tar.gz
+hf_cache/
+dataset_cache/
+processed_dataset_cache/
+hf_datasets/
+cv-corpus-*/
+kenlm/
+
+# Python & Umgebungen
+.venv/
+env/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/

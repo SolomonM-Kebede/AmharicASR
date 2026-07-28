@@ -91,6 +91,7 @@ DIALECT_CONFIGS = [
     ("leyu-amharic/leyu-amharic-gonder-dialect", "gonder"),
     ("leyu-amharic/leyu-amharic-wello-dialect",  "wello"),
     ("leyu-amharic/leyu-amharic-shewa-dialect",  "shewa"),
+    ("gheero-Leyu/leyu-amharic-addis-ababa-dialect", "addis ababa")
 ]
 
 cache_ready = Path(LEYU_CACHE).exists() and any(Path(LEYU_CACHE).iterdir())

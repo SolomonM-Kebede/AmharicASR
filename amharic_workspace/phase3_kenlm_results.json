@@ -1,0 +1,86 @@
+{
+  "phase1_standard": {
+    "config": "phase1_standard",
+    "best_alpha": 0.0,
+    "beta": 0.1,
+    "n_beams": 5,
+    "test_raw_wer": 33.1,
+    "test_res_wer": 33.1,
+    "test_raw_cer": 12.24,
+    "test_res_cer": 12.24,
+    "alpha_sweep": [
+      {
+        "alpha": 0.0,
+        "raw_wer": 32.473145617491895,
+        "res_wer": 32.473145617491895
+      },
+      {
+        "alpha": 0.2,
+        "raw_wer": 32.473145617491895,
+        "res_wer": 32.473145617491895
+      },
+      {
+        "alpha": 0.4,
+        "raw_wer": 32.473145617491895,
+        "res_wer": 32.473145617491895
+      },
+      {
+        "alpha": 0.6,
+        "raw_wer": 32.473145617491895,
+        "res_wer": 32.473145617491895
+      },
+      {
+        "alpha": 0.8,
+        "raw_wer": 32.473145617491895,
+        "res_wer": 32.473145617491895
+      },
+      {
+        "alpha": 1.0,
+        "raw_wer": 32.473145617491895,
+        "res_wer": 32.473145617491895
+      }
+    ]
+  },
+  "phase2_dialect": {
+    "config": "phase2_dialect",
+    "best_alpha": 0.0,
+    "beta": 0.1,
+    "n_beams": 5,
+    "test_raw_wer": 64.57,
+    "test_res_wer": 64.57,
+    "test_raw_cer": 51.49,
+    "test_res_cer": 51.49,
+    "alpha_sweep": [
+      {
+        "alpha": 0.0,
+        "raw_wer": 68.66677989130436,
+        "res_wer": 68.66677989130436
+      },
+      {
+        "alpha": 0.1,
+        "raw_wer": 68.66677989130436,
+        "res_wer": 68.66677989130436
+      },
+      {
+        "alpha": 0.2,
+        "raw_wer": 68.66677989130436,
+        "res_wer": 68.66677989130436
+      },
+      {
+        "alpha": 0.3,
+        "raw_wer": 68.66677989130436,
+        "res_wer": 68.66677989130436
+      },
+      {
+        "alpha": 0.5,
+        "raw_wer": 68.66677989130436,
+        "res_wer": 68.66677989130436
+      },
+      {
+        "alpha": 0.7,
+        "raw_wer": 68.66677989130436,
+        "res_wer": 68.66677989130436
+      }
+    ]
+  }
+}
