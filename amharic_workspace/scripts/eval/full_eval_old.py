@@ -5,7 +5,7 @@ from transformers import WhisperProcessor, WhisperForConditionalGeneration
 from tqdm import tqdm
 
 # ── 1. Configuration ────────────────────────────────────────────────────────
-MODEL_DIR = "/tmp/amharic_workspace/whisper-amharic-model-unzipped" # Update this!
+MODEL_DIR = "/tmp/amharic_workspace/whisper-amharic-model-unzipped" 
 DATASET_CACHE = "/tmp/amharic_workspace/amharic_dataset_cache/amharic_dataset_cache_processed"
 
 AMHARIC_CHAR_MAP = {

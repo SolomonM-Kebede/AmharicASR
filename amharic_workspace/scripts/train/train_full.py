@@ -32,9 +32,8 @@ print(f"Imports complete. torch: {torch.__version__}")
 N_GPUS = torch.cuda.device_count()
 print(f"GPUs available: {N_GPUS} | {torch.cuda.get_device_name(0) if N_GPUS > 0 else 'CPU'}")
 
-# ══════════════════════════════════════════════════════════════════════════════
+
 # GLOBAL CONFIGURATION & STORAGE BYPASS
-# ══════════════════════════════════════════════════════════════════════════════
 load_dotenv()
 HF_TOKEN = os.getenv('HF_TOKEN', '')
 os.environ["HF_TOKEN"] = HF_TOKEN  
@@ -72,9 +71,8 @@ LEYU_DATASETS = [
 ]
 ALFFA_DATASET = "hadamard-2/alffa-amharic"
 
-# ══════════════════════════════════════════════════════════════════════════════
+
 # NORMALIZATION
-# ══════════════════════════════════════════════════════════════════════════════
 AMHARIC_CHAR_MAP = {
     "ሐ": "ሀ", "ሑ": "ሁ", "ሒ": "ሂ", "ሓ": "ሃ", "ሔ": "ሄ", "ሕ": "ህ", "ሖ": "ሆ",
     "ኀ": "ሀ", "ኁ": "ሁ", "ኂ": "ሂ", "ኃ": "ሃ", "ኄ": "ሄ", "ኅ": "ህ", "ኆ": "ሆ",
@@ -91,19 +89,18 @@ def normalize_amharic(text: str) -> str:
         text = text.replace(p, '') 
     return " ".join(text.split()).strip()
 
-# ══════════════════════════════════════════════════════════════════════════════
+
 # DATASET PREPARATION 
-# ══════════════════════════════════════════════════════════════════════════════
 print(f"Loading {MODEL_NAME} processor...")
 processor = WhisperProcessor.from_pretrained(MODEL_NAME, language="amharic", task="transcribe")
 
 if Path(DATA_CACHE).exists():
-    print(f"✅ Found existing cached dataset at {DATA_CACHE}. Loading instantly...")
+    print(f"Found existing cached dataset at {DATA_CACHE}. Loading instantly...")
     from datasets import load_from_disk
     raw_dataset = load_from_disk(DATA_CACHE)
     dataset = raw_dataset
 else:
-    print("📥 Loading Leyu dialect datasets from HuggingFace...")
+    print("Loading Leyu dialect datasets from HuggingFace...")
     all_dialects = []
     for repo_id in LEYU_DATASETS:
         print(f"  Loading {repo_id}...")
@@ -111,7 +108,7 @@ else:
         ds = ds.cast_column("audio", Audio(sampling_rate=16_000, decode=False))
         all_dialects.append(ds)
 
-    print("📥 Loading ALFFA Amharic...")
+    print("Loading ALFFA Amharic...")
     alffa = load_dataset(ALFFA_DATASET, split='train')
     alffa = alffa.cast_column("audio", Audio(sampling_rate=16_000, decode=False))
     alffa = alffa.rename_column('transcript', 'text')
@@ -149,7 +146,7 @@ else:
         "test":       combined.select(test_idx),
     })
 
-    print(f"\n✅ Data Splits Cleaned: Train={len(raw_dataset['train']):,} | Val={len(raw_dataset['validation']):,} | Test={len(raw_dataset['test']):,}")
+    print(f"\n Data Splits Cleaned: Train={len(raw_dataset['train']):,} | Val={len(raw_dataset['validation']):,} | Test={len(raw_dataset['test']):,}")
 
     def prepare_batch(batch):
         audio_data = batch["audio"]
@@ -173,7 +170,7 @@ else:
 
         return batch
 
-    print("⚙️ Extracting log-Mel features...")
+    print(" Extracting log-Mel features...")
     dataset = raw_dataset.map(
         prepare_batch,
         remove_columns=["text", "audio", "dialect", "speaker_id", "gender"],
@@ -181,9 +178,8 @@ else:
     )
     dataset.save_to_disk(DATA_CACHE)
 
-# ══════════════════════════════════════════════════════════════════════════════
+
 # COLLATOR & METRICS
-# ══════════════════════════════════════════════════════════════════════════════
 @dataclass
 class DataCollatorSpeechSeq2SeqWithPadding:
     processor: WhisperProcessor
@@ -218,17 +214,16 @@ def compute_metrics(pred):
         "cer": round(cer_metric.compute(predictions=pred_str, references=label_str) * 100, 2),
     }
 
-# ══════════════════════════════════════════════════════════════════════════════
+
 # MODEL & TRAINING
-# ══════════════════════════════════════════════════════════════════════════════
 print("Loading model for Full Fine-Tuning...")
 model = WhisperForConditionalGeneration.from_pretrained(MODEL_NAME)
 
-# 🚨 THE LARGE-V3 SURVIVAL PROTOCOL 🚨
+# THE LARGE-V3 SURVIVAL PROTOCOL 
 model.config.use_cache = False
 model.config.apply_spec_augment = False
 
-# 1. Freeze the massive 32-layer Encoder. 
+# Freeze the massive 32-layer Encoder. 
 # Medium could survive unthawed, but Large-v3 shatters in bf16 mixed precision.
 model.freeze_encoder()
 
@@ -262,7 +257,7 @@ training_args = Seq2SeqTrainingArguments(
     fp16=False,
     gradient_checkpointing=False, 
     
-    # 🚨 2. Optimizer Stabilizers for Massive Models 🚨
+    # 2. Optimizer Stabilizers for Massive Models 
     adam_beta1=0.9,
     adam_beta2=0.98,       # standard is 0.999 (too fragile for 1.5B parameters)
     adam_epsilon=1e-6,     # standard is 1e-8 (causes div-by-zero in bf16)
@@ -281,7 +276,7 @@ training_args = Seq2SeqTrainingArguments(
     dataloader_num_workers=4,
 )
 
-# 🚨 CASTING FIX FOR EVALUATION 🚨
+# CASTING FIX FOR EVALUATION 
 class SafeWhisperTrainer(Seq2SeqTrainer):
     def prediction_step(self, model, inputs, prediction_loss_only: bool, ignore_keys=None):
         if "input_features" in inputs:
@@ -307,10 +302,9 @@ trainer.save_model()
 processor.save_pretrained(OUTPUT_DIR)
 trainer.save_state()
 
-# ══════════════════════════════════════════════════════════════════════════════
+
 # MANUAL EVALUATION ON HELD-OUT TEST SET
-# ══════════════════════════════════════════════════════════════════════════════
-print("📊 Evaluating on perfectly held-out test set...")
+print("Evaluating on perfectly held-out test set...")
 results = trainer.predict(dataset["test"])
 
 pred_ids  = results.predictions
@@ -329,10 +323,8 @@ print(f"  Final Test CER : {test_cer:.2f}%")
 print(f"  Google STT baseline : ~35% WER")
 print(f"{'='*50}")
 
-# ══════════════════════════════════════════════════════════════════════════════
 # PLOTTING TRAINING CURVES
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n📈 Plotting training curves...")
+print("\n Plotting training curves...")
 log_path = Path(OUTPUT_DIR) / "trainer_state.json"
 if log_path.exists():
     with open(log_path) as f:
@@ -385,13 +377,12 @@ if log_path.exists():
     plt.tight_layout()
     plot_path = Path(OUTPUT_DIR) / "training_curves.png"
     plt.savefig(str(plot_path), dpi=150, bbox_inches="tight")
-    print(f"✅ Saved plot to {plot_path}")
+    print(f" Saved plot to {plot_path}")
 else:
-    print(f"⚠️ Could not find {log_path} to plot curves.")
+    print(f" Could not find {log_path} to plot curves.")
 
-# ══════════════════════════════════════════════════════════════════════════════
+
 # EXPORTING FINAL MODEL
-# ══════════════════════════════════════════════════════════════════════════════
 zip_path = os.path.join(BASE_DIR, "whisper-amharic-model.zip")
 
 if Path(zip_path).exists():
@@ -400,17 +391,17 @@ if Path(zip_path).exists():
     else:
         os.remove(zip_path)
 
-print("\n📦 Zipping model for extraction (excluding massive checkpoints)...")
+print("\n Zipping model for extraction (excluding massive checkpoints)...")
 with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
     for f in Path(OUTPUT_DIR).rglob("*"):
         if f.is_file() and "checkpoint" not in str(f):
             zf.write(f, f.relative_to(OUTPUT_DIR))
 
 size_mb = Path(zip_path).stat().st_size / 1e6
-print(f"✅ Zipped: {size_mb:.0f} MB")
+print(f" Zipped: {size_mb:.0f} MB")
 print(f"   Saved to: {zip_path}")
 
-print("\n📋 Zip Contents:")
+print("\n Zip Contents:")
 with zipfile.ZipFile(zip_path, "r") as zf:
     for name in zf.namelist():
         size = zf.getinfo(name).file_size / 1e6

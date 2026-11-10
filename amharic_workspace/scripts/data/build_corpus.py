@@ -18,7 +18,7 @@ def normalize_amharic(text: str) -> str:
         text = text.replace(p, " ")          
     return " ".join(text.split()).strip()
 
-print("📥 Downloading Amharic Wikipedia...")
+print("Downloading Amharic Wikipedia...")
 wiki = load_dataset("wikimedia/wikipedia", "20231101.am", split="train")
 
 output_file = "/tmp/amharic_workspace/amharic_corpus.txt"
