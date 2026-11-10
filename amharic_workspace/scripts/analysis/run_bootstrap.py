@@ -11,8 +11,8 @@ import numpy as np
 import jiwer
 from datasets import load_from_disk
 
-X_JSONL = "results/persample/a2_persample.jsonl"  # C4, FP16 weights
-Y_JSONL = "results/persample/c1_persample.jsonl"   
+X_JSONL = "results/persample/results_raw_persample.jsonl"   # C2, LoRA
+Y_JSONL = "results/persample/c4b_bfloat16_persample.jsonl"   # C4b, full FT
 TEST_CACHE = "phase2_leyu/dataset_cache_joint_independent"
 B = 10_000
 SEED = 42
