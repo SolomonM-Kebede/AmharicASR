@@ -1,5 +1,6 @@
 # Modelle & Checkpoints
 models/
+*/models/
 checkpoint-*/
 ray_results/
 whisper-amharic-largev3/
@@ -11,20 +12,69 @@ logs-largev3/
 *model.safetensors*
 
 # Datensätze & Caches
-*.txt
-*.arpa
-*.zip
-*.tar.gz
+phase2b_leyu_standard/
+single_phase_raw_whisper/
+test_set_audio_export/
+test_set_audio_export_MATCHED/
 hf_cache/
+.local_hf_cache/
 dataset_cache/
 processed_dataset_cache/
 hf_datasets/
 cv-corpus-*/
 kenlm/
+*dataset_cache*/
+*.arpa
+*.zip
+*.tar.gz
+*.wav
+*.mp3
+*.flac
+*.m4a
+*.slurm
+
+# Logs & Textausgaben
+logs/
+*/logs/
+*.out
+*.err
+*.log
+log*.txt
+*.bak
+
+# Per-sample-Ergebnisse: nur die im Thesis verwendeten Dateien committen
+*.jsonl
+!amharic_workspace/results/persample/*.jsonl
+!amharic_workspace/results/google/google_stt_raw_predictions.jsonl
+!joint_composition_ablation/results_raw_persample.jsonl
+!eval_controls/*.jsonl
+!phase_fullft_joint_indep/results/fullft_joint_indep_TEST_persample.jsonl
+!phase2_leyu/results/google_stt_raw_predictions.jsonl
+
+# Ausnahmen, die für die Reproduktion gebraucht werden
+!requirements.txt
+!subset_688_idx.txt
 
 # Python & Umgebungen
 .venv/
+.amhenv/
 env/
 __pycache__/
 *.pyc
+*.egg-info/
 .ipynb_checkpoints/
+
+# Secrets
+.env
+*.key
+*credentials*.json
+service_account*.json
+
+amharic_workspace/.local_hf_cache/
+amharic_workspace/hf_cache/
+amharic_workspace/**/*.arrow
+amharic_workspace/**/*.lock
+amharic_workspace/**/dataset_info.json
+# Model folders (weights, configs, tokenizers)
+models/
+amharic_workspace/models/
