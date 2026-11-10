@@ -78,3 +78,4 @@ amharic_workspace/**/dataset_info.json
 # Model folders (weights, configs, tokenizers)
 models/
 amharic_workspace/models/
+Ray_Lora_code/
