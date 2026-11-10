@@ -7,7 +7,7 @@ import evaluate
 from transformers import WhisperTokenizer
 
 MAN = "test_set_audio_export/manifest.jsonl"
-RAW = "phase2_leyu/results/google_stt_raw_predictions.jsonl"
+RAW = "results/google/google_stt_raw_predictions.jsonl"
 MAX_TOK = 448
 
 CHAR_MAP = {

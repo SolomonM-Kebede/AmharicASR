@@ -81,8 +81,8 @@ def strict(s):
     return " ".join(s.split())
 
 res = {}
-for name, P in {"C4": "phase_fullft_joint_indep/results/fullft_joint_indep_TEST_persample.jsonl",
-                "C2": "joint_composition_ablation/results_raw_persample.jsonl"}.items():
+for name, P in {"C4": "results/persample/fullft_joint_indep_TEST_persample.jsonl",
+                "C2": "results/persample/results_raw_persample.jsonl"}.items():
     R = [json.loads(l) for l in open(P)]
     a = jiwer.wer([r["reference"] for r in R], [r["prediction"] for r in R]) * 100
     b = jiwer.wer([strict(r["reference"]) for r in R], [strict(r["prediction"]) for r in R]) * 100

@@ -11,13 +11,13 @@ import numpy as np
 import jiwer
 from datasets import load_from_disk
 
-X_JSONL = "eval_controls/a2_persample.jsonl"  # C4, FP16 weights
-Y_JSONL = "eval_controls/c1_persample.jsonl"   
+X_JSONL = "results/persample/a2_persample.jsonl"  # C4, FP16 weights
+Y_JSONL = "results/persample/c1_persample.jsonl"   
 TEST_CACHE = "phase2_leyu/dataset_cache_joint_independent"
 B = 10_000
 SEED = 42
 MAX_CACHE_FAILURES = 0   # strict: any failure stops the run
-SUBSET_FILE = "subset_688_idx.txt"
+SUBSET_FILE = "splits/subset_688_idx.txt"
 SUBSET = set(int(x) for x in open(SUBSET_FILE).read().split())
 USE_SUBSET = False
 

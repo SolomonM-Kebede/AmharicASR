@@ -5,7 +5,7 @@
 
 # rows = [json.loads(l) for l in open(MANIFEST, encoding="utf-8")]
 # pers = [json.loads(l) for l in open(PERSAMPLE, encoding="utf-8")]
-# subset_idx = {int(l) for l in open("subset_688_idx.txt", encoding="utf-8") if l.strip()}
+# subset_idx = {int(l) for l in open("splits/subset_688_idx.txt", encoding="utf-8") if l.strip()}
 
 # def full(p): return rows[p["orig_idx"]]["reference"].strip()
 # def short(p): return p["reference"].strip()
@@ -25,7 +25,7 @@ from normalize import normalize_amharic   # replace normalize_module
 
 
 X = {}
-with open("joint_composition_ablation/results_raw_persample.jsonl", encoding="utf-8") as f:
+with open("results/persample/results_raw_persample.jsonl", encoding="utf-8") as f:
     for line in f:
         o = json.loads(line)
         X[o["orig_idx"]] = o

@@ -4,10 +4,10 @@ Printed delta = WER_X - WER_Y (positive: C4b better).
 """
 import numpy as np
 from datasets import load_from_disk
-from run_bootstrap import load, word_errors, cache_ok, bootstrap_delta
+from common.bootstrap_utils import load, word_errors, cache_ok, bootstrap_delta
 
-X_JSONL = "joint_composition_ablation/results_raw_persample.jsonl"   # C2, LoRA
-Y_JSONL = "eval_controls/c4b_bfloat16_persample.jsonl"               # C4b, full FT
+X_JSONL = "results/persample/results_raw_persample.jsonl"   # C2, LoRA
+Y_JSONL = "results/persample/c4b_bfloat16_persample.jsonl"               # C4b, full FT
 TEST_CACHE = "phase2_leyu/dataset_cache_joint_independent"
 B, SEED = 10_000, 42
 DIALECTS = ["gojjam", "gonder", "wello", "shewa", "addis ababa"]

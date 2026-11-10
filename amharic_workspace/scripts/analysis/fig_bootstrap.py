@@ -11,8 +11,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 CACHE = "/home/stud_homes/s8345520/AmharicASR/amharic_workspace/phase2_leyu/dataset_cache_joint_independent"
-C2 = "joint_composition_ablation/results_raw_persample.jsonl"                       # LoRA, raw init
-C4 = "phase_fullft_joint_indep/results/fullft_joint_indep_TEST_persample.jsonl"    # Full FT, raw init
+C2 = "results/persample/results_raw_persample.jsonl"                       # LoRA, raw init
+C4 = "results/persample/fullft_joint_indep_TEST_persample.jsonl"    # Full FT, raw init
 B = 10_000
 SEED = 0
 

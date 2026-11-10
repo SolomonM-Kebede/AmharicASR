@@ -56,7 +56,7 @@ print("share of test utts with text in sample: %.3f (SI full pool: 0.964, Joint:
 print("share of validation utts with text in sample: %.3f" % (sum(t in S for t in va) / len(va)))
 
 os.makedirs("manifests", exist_ok=True)
-sample[["spk", "dialect", "norm"]].to_csv("manifests/d1_sample_manifest.csv", index=False)
+sample[["spk", "dialect", "norm"]].to_csv("splits/manifests/d1_sample_manifest.csv", index=False)
 DatasetDict({"train": combined.select(sorted(sample.i.tolist())),
              "validation": joint["validation"], "test": joint["test"]}).save_to_disk(OUT)
 print("saved", OUT)

@@ -10,7 +10,7 @@
 #         print(run.split("/")[-1], "no training_args.bin:", type(e).__name__)
 # import pandas as pd
 # from datasets import load_from_disk
-# d1 = pd.read_csv("manifests/d1_sample_manifest.csv")
+# d1 = pd.read_csv("splits/manifests/d1_sample_manifest.csv")
 # te = load_from_disk("phase2_leyu/dataset_cache_joint_independent")["test"].select_columns(["norm_text"])["norm_text"]
 # S = set(d1.norm.dropna())
 # print("test utts with text in the D1 sample: %.3f" % (sum(t in S for t in te) / len(te)), "| distinct texts:", len(S))
@@ -45,7 +45,7 @@
 # def stats(texts):
 #     w = [x for t in texts for x in t.split()]
 #     return round(float(np.mean([len(x) for x in w])), 2), round(100 * float(np.mean([len(x) == 1 for x in w])), 1)
-# R = [json.loads(l) for l in open("eval_controls/p1_persample.jsonl")]
+# R = [json.loads(l) for l in open("results/persample/p1_persample.jsonl")]
 # print("mean word length, % one-character words | Leyu refs:", stats([r["reference"] for r in R]),
 #       "| Phase 1 hyps:", stats([r["prediction"] for r in R]))
 # print("words per utterance | refs / hyps:", round(np.mean([len(r["reference"].split()) for r in R]), 1),
@@ -94,9 +94,9 @@
 #     return round(pt, 2), "speaker CI", tuple(np.round(np.percentile(d, [2.5, 97.5]), 2)), \
 #            "utterance CI", tuple(np.round(np.percentile(d2, [2.5, 97.5]), 2)), "b worse in", round((d > 0).mean(), 3)
 
-# F = {"A2": "eval_controls/a2_persample.jsonl", "D1": "eval_controls/d1_persample.jsonl", "C1": "eval_controls/c1_persample.jsonl",
-#      "C2": "joint_composition_ablation/results_raw_persample.jsonl",
-#      "C4": "phase_fullft_joint_indep/results/fullft_joint_indep_TEST_persample.jsonl"}
+# F = {"A2": "results/persample/a2_persample.jsonl", "D1": "results/persample/d1_persample.jsonl", "C1": "results/persample/c1_persample.jsonl",
+#      "C2": "results/persample/results_raw_persample.jsonl",
+#      "C4": "results/persample/fullft_joint_indep_TEST_persample.jsonl"}
 # for a, b in (("A2", "D1"), ("D1", "C1"), ("A2", "C1"), ("C2", "C4")):
 #     print(f"WER({b}) - WER({a}):", paired(F[a], F[b]))
 
@@ -205,7 +205,7 @@
 #     m = json.loads(line); man[m["path"]] = m
 
 # G = {}
-# for line in open("phase2_leyu/results/google_stt_raw_predictions.jsonl", encoding="utf-8"):
+# for line in open("results/google/google_stt_raw_predictions.jsonl", encoding="utf-8"):
 #     g = json.loads(line); G[g["path"]] = g
 
 # sel = [p for p, m in man.items()
@@ -234,7 +234,7 @@
 # from datasets import load_from_disk
 # test = load_from_disk("phase2_leyu/dataset_cache_joint_independent")["test"]
 # man = [json.loads(l) for l in open("test_set_audio_export/manifest.jsonl", encoding="utf-8")]
-# G = {json.loads(l)["path"]: json.loads(l) for l in open("phase2_leyu/results/google_stt_raw_predictions.jsonl", encoding="utf-8")}
+# G = {json.loads(l)["path"]: json.loads(l) for l in open("results/google/google_stt_raw_predictions.jsonl", encoding="utf-8")}
 # sel = [i for i, m in enumerate(man)
 #        if m["duration_sec"] <= 30 and len(tok(test[i]["norm_text"]).input_ids) <= 448]
 # for i in sel:
@@ -249,7 +249,7 @@ import json
 
 man = [json.loads(l) for l in open("test_set_audio_export/manifest.jsonl", encoding="utf-8")]
 scored = {json.loads(l)["path"]
-          for l in open("phase2_leyu/results/google_stt_raw_predictions.jsonl", encoding="utf-8")}
+          for l in open("results/google/google_stt_raw_predictions.jsonl", encoding="utf-8")}
 
 over60 = [m for m in man if m["duration_sec"] > 60]
 under60 = [m for m in man if m["duration_sec"] <= 60]

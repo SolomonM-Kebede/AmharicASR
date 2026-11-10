@@ -7,9 +7,9 @@ low-rate bucket.
 import jiwer
 import numpy as np
 from datasets import load_from_disk
-from run_bootstrap import load, word_errors, cache_ok
+from common.bootstrap_utils import load, word_errors, cache_ok
 
-Y_JSONL = "eval_controls/c4b_bfloat16_persample.jsonl"
+Y_JSONL = "results/persample/c4b_bfloat16_persample.jsonl"
 TEST_CACHE = "phase2_leyu/dataset_cache_joint_independent"
 
 test = load_from_disk(TEST_CACHE)["test"]

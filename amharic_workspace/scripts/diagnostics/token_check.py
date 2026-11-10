@@ -30,7 +30,7 @@
 # dur = np.array([sf.info(io.BytesIO(a["bytes"]) if a.get("bytes") else a["path"]).duration for a in ds["audio"]])
 
 # P = {}
-# for line in open("eval_controls/c4b_bfloat16_persample.jsonl", encoding="utf-8"):
+# for line in open("results/persample/c4b_bfloat16_persample.jsonl", encoding="utf-8"):
 #     r = json.loads(line); P[r["orig_idx"]] = r
 
 # groups = {"short (<=30 s)": [], "long (>30 s)": []}
@@ -63,7 +63,7 @@
 # ntok = np.array([len(tok(t).input_ids) for t in test["norm_text"]])   # same tokenization as the labels
 
 # P = {}
-# for line in open("eval_controls/c4b_bfloat16_persample.jsonl", encoding="utf-8"):
+# for line in open("results/persample/c4b_bfloat16_persample.jsonl", encoding="utf-8"):
 #     r = json.loads(line); P[r["orig_idx"]] = r
 
 # G = {
@@ -93,7 +93,7 @@
 # tok = WhisperTokenizer.from_pretrained("openai/whisper-large-v3")
 # ntok = np.array([len(tok(t).input_ids) for t in test["norm_text"]])
 # P = {}
-# for line in open("eval_controls/c4b_bfloat16_persample.jsonl", encoding="utf-8"):
+# for line in open("results/persample/c4b_bfloat16_persample.jsonl", encoding="utf-8"):
 #     r = json.loads(line); P[r["orig_idx"]] = r
 
 # def show(mask, name, k=5):
@@ -122,7 +122,7 @@
 # full_words = np.array([len(t.split()) for t in test["norm_text"]])      # full reference, untruncated
 # ntok = np.array([len(tok(t).input_ids) for t in test["norm_text"]])
 # P = {}
-# for line in open("eval_controls/c4b_bfloat16_persample.jsonl", encoding="utf-8"):
+# for line in open("results/persample/c4b_bfloat16_persample.jsonl", encoding="utf-8"):
 #     r = json.loads(line); P[r["orig_idx"]] = r
 # rate = full_words / dur
 

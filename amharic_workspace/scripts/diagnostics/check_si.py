@@ -109,8 +109,8 @@ print("test, U+1361 attached on both sides:", len(re.findall(r"\S\u1361\S", t)),
 import json, re, jiwer
 strip = lambda s: " ".join(re.sub(f"[{marks}]", " ", s).split())
 files = {
-  "C4 full FT joint": "phase_fullft_joint_indep/results/fullft_joint_indep_TEST_persample.jsonl",
-  "composition ablation": "joint_composition_ablation/results_raw_persample.jsonl",
+  "C4 full FT joint": "results/persample/fullft_joint_indep_TEST_persample.jsonl",
+  "composition ablation": "results/persample/results_raw_persample.jsonl",
   # add C1, C2, C3 and the A-run per-sample files here
 }
 REF_KEYS = ["reference", "ref", "norm_ref", "target", "gold", "label"]

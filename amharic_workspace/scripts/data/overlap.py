@@ -52,7 +52,7 @@ ds = load_from_disk(LEYU_CACHE)
 # keep = np.array([(x <= 30 and n <= 448) for x, n in zip(dur, ntok)])
 # print("subset size:", keep.sum())
 
-# rows = [json.loads(l) for l in open("phase_fullft_joint_indep/results/fullft_joint_indep_TEST_persample.jsonl")]
+# rows = [json.loads(l) for l in open("results/persample/fullft_joint_indep_TEST_persample.jsonl")]
 # # assumes the JSONL is in test order; otherwise join on the utterance id
 # refs = [r["reference"] for r, k in zip(rows, keep) if k]
 # hyps = [r["prediction"] for r, k in zip(rows, keep) if k]
@@ -158,8 +158,8 @@ ds = load_from_disk(LEYU_CACHE)
 import json, numpy as np, jiwer
 
 # FILES = {
-#     "C2_LoRA_raw_joint": "joint_composition_ablation/results_raw_persample.jsonl",
-#     "C4_FFT_raw_joint":  "phase_fullft_joint_indep/results/fullft_joint_indep_TEST_persample.jsonl",
+#     "C2_LoRA_raw_joint": "results/persample/results_raw_persample.jsonl",
+#     "C4_FFT_raw_joint":  "results/persample/fullft_joint_indep_TEST_persample.jsonl",
 # }
 # v, t = set(ds["validation"]["norm_text"]), set(ds["test"]["norm_text"])
 # print("val/test shared texts:", len(v & t))
@@ -234,7 +234,7 @@ import json, numpy as np, jiwer
 # from collections import Counter
 # man_all = [json.loads(l) for l in open("test_set_audio_export/manifest.jsonl")]
 # man_m   = [json.loads(l) for l in open("test_set_audio_export_MATCHED/manifest.jsonl")]
-# g       = [json.loads(l) for l in open("phase2_leyu/results/google_stt_raw_predictions.jsonl")]
+# g       = [json.loads(l) for l in open("results/google/google_stt_raw_predictions.jsonl")]
 
 # print("all:", len(man_all), list(man_all[0].keys()))
 # print("matched:", len(man_m), Counter(m["match_type"] for m in man_m), Counter(m["dialect"] for m in man_m))
@@ -257,7 +257,7 @@ import json, numpy as np, jiwer
 
 # tok = WhisperTokenizer.from_pretrained("openai/whisper-large-v3")
 # man = [json.loads(l) for l in open("test_set_audio_export/manifest.jsonl")]
-# g = {r["path"]: r for r in map(json.loads, open("phase2_leyu/results/google_stt_raw_predictions.jsonl"))}
+# g = {r["path"]: r for r in map(json.loads, open("results/google/google_stt_raw_predictions.jsonl"))}
 
 # rows = []
 # for m in man:
@@ -321,8 +321,8 @@ import json, numpy as np, jiwer
 #         n.append(o.substitutions + o.deletions + o.hits)
 #     return np.array(e), np.array(n)
 
-# E_c2, N_c2 = per_utt("joint_composition_ablation/results_raw_persample.jsonl")
-# E_c4, N_c4 = per_utt("phase_fullft_joint_indep/results/fullft_joint_indep_TEST_persample.jsonl")
+# E_c2, N_c2 = per_utt("results/persample/results_raw_persample.jsonl")
+# E_c4, N_c4 = per_utt("results/persample/fullft_joint_indep_TEST_persample.jsonl")
 
 # # 3. WER on all utterances and on the short clips
 # for name, E, N in [("C2 LoRA", E_c2, N_c2), ("C4 Full FT", E_c4, N_c4)]:
@@ -356,9 +356,9 @@ import json, numpy as np, jiwer
 # def load(path):  # adapt to your manifest format
 #     return pd.read_json(path, lines=True)  # or pd.read_csv
 
-# si = {k: load(f"manifests/si_{k}.jsonl") for k in ("train", "val", "test")}
-# jt = {k: load(f"manifests/joint_{k}.jsonl") for k in ("train", "val", "test")}
-# ti = {k: load(f"manifests/ti_{k}.jsonl") for k in ("train", "val", "test")}
+# si = {k: load(f"splits/manifests/si_{k}.jsonl") for k in ("train", "val", "test")}
+# jt = {k: load(f"splits/manifests/joint_{k}.jsonl") for k in ("train", "val", "test")}
+# ti = {k: load(f"splits/manifests/ti_{k}.jsonl") for k in ("train", "val", "test")}
 # # columns assumed: speaker, dialect, gender, text_norm, duration_s
 
 # def overlap(train, test, col):
@@ -392,14 +392,14 @@ import json, numpy as np, jiwer
 #       "hours", round(allleyu.duration_s.sum() / 3600, 1))
 
 # # does the Joint guarantee cover ALFFA/CV in the mixed runs?
-# std = load("manifests/standard_train_in_mixed_joint.jsonl")  # adapt
+# std = load("splits/manifests/standard_train_in_mixed_joint.jsonl")  # adapt
 # held = set(jt["val"].text_norm) | set(jt["test"].text_norm)
 # print("ALFFA/CV train utts whose text is in Leyu val/test:", std.text_norm.isin(held).sum())
 import json, numpy as np
 from transformers import WhisperTokenizer
 tok = WhisperTokenizer.from_pretrained("openai/whisper-large-v3")
-for P in ("phase_fullft_joint_indep/results/fullft_joint_indep_TEST_persample.jsonl",
-          "joint_composition_ablation/results_raw_persample.jsonl"):
+for P in ("results/persample/fullft_joint_indep_TEST_persample.jsonl",
+          "results/persample/results_raw_persample.jsonl"):
     R = [json.loads(l) for l in open(P)]
     lr = np.array([len(tok(r["reference"]).input_ids) for r in R])
     lh = np.array([len(tok(r["prediction"]).input_ids) for r in R])

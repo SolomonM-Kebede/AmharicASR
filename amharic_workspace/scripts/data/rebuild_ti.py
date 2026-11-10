@@ -35,8 +35,8 @@ import json, numpy as np
 from transformers import WhisperTokenizer
 tok = WhisperTokenizer.from_pretrained("openai/whisper-large-v3")
 files = {   # add every per-sample file behind a reported number (A2, A3, A4, B1, C1, C2, C3, C4)
-  "C4": "phase_fullft_joint_indep/results/fullft_joint_indep_TEST_persample.jsonl",
-  "C-ablation": "joint_composition_ablation/results_raw_persample.jsonl",
+  "C4": "results/persample/fullft_joint_indep_TEST_persample.jsonl",
+  "C-ablation": "results/persample/results_raw_persample.jsonl",
 }
 for name, p in files.items():
     L = [len(tok(json.loads(l)["prediction"]).input_ids) for l in open(p)]
@@ -79,7 +79,7 @@ print("text overlap tr/va, tr/te, va/te:", len(T["train"] & T["validation"]),
       len(T["train"] & T["test"]), len(T["validation"] & T["test"]))
 
 os.makedirs("manifests", exist_ok=True)
-df[["speaker", "dialect", "text", "partition"]].to_csv("manifests/ti_split_manifest.csv", index=False)
+df[["speaker", "dialect", "text", "partition"]].to_csv("splits/manifests/ti_split_manifest.csv", index=False)
 
 import json, numpy as np
 from transformers import WhisperTokenizer
@@ -96,7 +96,7 @@ os.makedirs("manifests", exist_ok=True)
 jt = load_from_disk("phase2_leyu/dataset_cache_joint_independent")
 joint = pd.concat([jt[p].select_columns(["speaker_id", "dialect", "norm_text"]).to_pandas()
                      .assign(partition=p) for p in ("train", "validation", "test")])
-joint.to_csv("manifests/joint_split_manifest.csv", index=False)
+joint.to_csv("splits/manifests/joint_split_manifest.csv", index=False)
 
 key = lambda s: s.str.replace("::", "_").str.replace(" ", "_")
 m = pd.read_parquet("leyu_meta_raw.parquet")
@@ -104,6 +104,6 @@ m["key"] = key(m.speaker); m["dialect"] = m.speaker.str.rsplit("_", n=1).str[0]
 m["partition"] = "train"
 for p in ("validation", "test"):
     m.loc[m.key.isin(set(key(joint[joint.partition == p].speaker_id))), "partition"] = p
-m[["speaker", "dialect", "text", "partition"]].to_csv("manifests/si_split_manifest.csv", index=False)
+m[["speaker", "dialect", "text", "partition"]].to_csv("splits/manifests/si_split_manifest.csv", index=False)
 print(m.partition.value_counts().to_dict())      # expect train 38948, validation 5942, test 4588
 
