@@ -83,3 +83,4 @@ __pycache__/
 scripts/diagnostics/diagnose_generation_diff.py
 scripts/diagnostics/diagnose_random_samples.py
 diagnose_samples.json
+amharic_workspace/archive/
