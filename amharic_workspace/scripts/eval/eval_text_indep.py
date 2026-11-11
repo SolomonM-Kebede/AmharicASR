@@ -83,7 +83,7 @@ class PredictOnlyTrainer(Seq2SeqTrainer):
         for key in ("decoder_input_ids", "decoder_inputs_embeds", "input_ids",
                     "attention_mask", "dialect", "orig_idx"):
             inputs.pop(key, None)
-        inputs["input_features"] = inputs["input_features"].to(dtype=model.dtype)
+        inputs["input_features"] = inputs["input_features"].to(dtype=next(model.parameters()).dtype)
         return super().prediction_step(model, inputs, prediction_loss_only, ignore_keys)
 
 

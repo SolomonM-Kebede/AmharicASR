@@ -1,180 +1,271 @@
+"""Google Speech-to-Text (synchronous API) on the Leyu test recordings.
+
+Sends each test recording of at most cfg.GOOGLE_MAX_SYNC_SECONDS (55 s) to the
+API, keeps the raw transcripts, and scores them with the shared normalization.
+The API accepts at most 60 s per request; the 55 s rule leaves a margin. Of the
+4,588 test recordings, 4,198 are sent and 390 are not (147 of them exceed 60 s).
+
+Two modes:
+  default     Sends requests and writes the raw transcripts. Each request is
+              billed, so the mode refuses to overwrite an existing raw file.
+  --rescore   Scores an existing raw file without calling the API. Use this to
+              reproduce a reported figure from the committed raw predictions.
+
+--subset restricts scoring to the 688 recordings that fit both the 30 s window
+and the 448-token reference limit (splits/subset_688_idx.txt). Those are the
+only recordings on which Google and the Whisper systems can be compared
+directly. The same raw file serves the full set and the subset.
+
+Outputs in results/google/:
+  <name>_raw_predictions.jsonl   one row per returned recording: orig_idx,
+                                 dialect, reference, hypothesis, path
+                                 (written by the default mode only)
+  <name>_results.json            per-dialect and overall WER and CER, with _meta
+
+Run from the workspace root after sourcing env.amh.sh. The API key is read from
+GOOGLE_API_KEY and is never written to a file.
+"""
+from common import config as cfg  # sets cache and offline flags; keep first
+
+import argparse
+import concurrent.futures
+import json
+import os
+import time
+from collections import Counter, defaultdict
+from pathlib import Path
+
+import evaluate
+from google.api_core import exceptions as gexc
+from google.cloud import speech
+
 from data.normalize import normalize_amharic
 
-"""
-Amharic ASR — Google Speech-to-Text evaluation on the SAME test set 
-"""
-
-import os
-import io
-import json
-import time
-import threading
-import concurrent.futures
-from pathlib import Path
-from dotenv import load_dotenv
-
-load_dotenv()
-API_KEY = os.environ.get("API_KEY") 
-if not API_KEY:
-    raise ValueError("API_KEY is not set!")
-CUSTOM_CACHE = os.environ.get("STT_CACHE_DIR", os.path.expanduser("~/AmharicASR/clean_cache"))
-os.makedirs(CUSTOM_CACHE, exist_ok=True)
-os.environ["HF_HOME"] = CUSTOM_CACHE
-os.environ["HF_DATASETS_CACHE"] = CUSTOM_CACHE
-os.environ["HF_HUB_CACHE"] = CUSTOM_CACHE
-os.environ["HF_MODULES_CACHE"] = CUSTOM_CACHE
-os.environ["HF_METRICS_CACHE"] = CUSTOM_CACHE
-os.environ["HF_EVALUATE_CACHE"] = CUSTOM_CACHE
-
-MANIFEST_PATH  = os.environ.get("MANIFEST_PATH", "~/AmharicASR/amharic_workspace/test_set_audio_export/manifest.jsonl")
-RESULTS_DIR    = os.environ.get("RESULTS_DIR", "~/AmharicASR/amharic_workspace/phase2_leyu/results")
-LANGUAGE_CODE  = os.environ.get("GOOGLE_STT_LANGUAGE_CODE", "am-ET")
-MAX_SYNC_SECONDS = 55
-MAX_WORKERS    = int(os.environ.get("MAX_WORKERS", 5))   
-MAX_RETRIES    = int(os.environ.get("MAX_RETRIES", 4))
-PROGRESS_EVERY = int(os.environ.get("PROGRESS_EVERY", 50))
-
-os.makedirs(RESULTS_DIR, exist_ok=True)
-
-from google.cloud import speech
-from google.api_core import exceptions as gexc
-
-AMHARIC_CHAR_MAP = {
-    "ሐ": "ሀ", "ሑ": "ሁ", "ሒ": "ሂ", "ሓ": "ሃ", "ሔ": "ሄ", "ሕ": "ህ", "ሖ": "ሆ",
-    "ኀ": "ሀ", "ኁ": "ሁ", "ኂ": "ሂ", "ኃ": "ሃ", "ኄ": "ሄ", "ኅ": "ህ", "ኆ": "ሆ",
-    "ዐ": "አ", "ዑ": "ኡ", "ዒ": "ኢ", "ዓ": "ኣ", "ዔ": "ኤ", "ዕ": "እ", "ዖ": "ኦ",
-    "ሠ": "ሰ", "ሡ": "ሱ", "ሢ": "ሲ", "ሣ": "ሳ", "ሤ": "ሴ", "ሥ": "ስ", "ሦ": "ሶ",
-    "ፀ": "ጸ", "ፁ": "ጹ", "ፂ": "ጺ", "ፃ": "ጻ", "ፄ": "ጼ", "ፅ": "ጽ", "ፆ": "ጾ",
-}
-PUNCT = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~።፣፤፥፦'
-
-def normalize_amharic(text: str) -> str:
-    for src, tgt in AMHARIC_CHAR_MAP.items():
-        text = text.replace(src, tgt)
-    for p in PUNCT:
-        text = text.replace(p, " ")
-    return " ".join(text.split()).strip()
+DIALECTS = ["gojjam", "gonder", "wello", "shewa", "addis ababa"]
+EXPECTED_TEST = 4588
+EXPECTED_SENT = 4198
+SUBSET_SIZE = 688
+MAX_SYNC_SECONDS = cfg.GOOGLE_MAX_SYNC_SECONDS
+LANGUAGE_CODE = os.environ.get("GOOGLE_STT_LANGUAGE_CODE", "am-ET")
 
 
-print(f"Loading manifest from {MANIFEST_PATH} ...", flush=True)
-entries = []
-with open(MANIFEST_PATH, "r", encoding="utf-8") as f:
-    for line in f:
-        entries.append(json.loads(line))
-print(f"  {len(entries):,} utterances", flush=True)
+def parse_args():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--name", default="google_stt",
+                    help="output prefix in results/google/")
+    ap.add_argument("--rescore", action="store_true",
+                    help="score an existing raw file without calling the API")
+    ap.add_argument("--raw", default="google_stt_raw_predictions.jsonl",
+                    help="raw file to rescore, relative to results/google/")
+    ap.add_argument("--subset", action="store_true",
+                    help="score only the 688 complete-recording subset")
+    ap.add_argument("--workers", type=int, default=5)
+    ap.add_argument("--retries", type=int, default=4,
+                    help="retries per request on quota errors")
+    ap.add_argument("--allow-failures", action="store_true",
+                    help="write results even if some requests failed")
+    ap.add_argument("--overwrite", action="store_true")
+    return ap.parse_args()
 
-client = speech.SpeechClient(client_options={"api_key": API_KEY})
-config = speech.RecognitionConfig(
-    encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-    sample_rate_hertz=16_000,
-    language_code=LANGUAGE_CODE,
-)
+
+def load_manifest():
+    path = cfg.require(cfg.MANIFESTS / "test_manifest.jsonl")
+    with open(path, encoding="utf-8") as f:
+        rows = [json.loads(line) for line in f]
+    if len(rows) != EXPECTED_TEST:
+        raise SystemExit(f"manifest has {len(rows)} rows, expected {EXPECTED_TEST}")
+    sent = sum(r["duration_sec"] <= MAX_SYNC_SECONDS for r in rows)
+    if sent != EXPECTED_SENT:
+        raise SystemExit(f"{sent} recordings at most {MAX_SYNC_SECONDS} s, expected {EXPECTED_SENT}")
+    return rows
 
 
-def transcribe_one(entry):
+def load_subset(rows):
+    """Indices of the 688 complete-recording subset, checked against the manifest."""
+    path = cfg.require(cfg.SUBSET_688_IDX)
+    idx = {int(x) for x in path.read_text().split()}
+    if len(idx) != SUBSET_SIZE:
+        raise SystemExit(f"{path} lists {len(idx)} indices, expected {SUBSET_SIZE}")
+    too_long = [i for i in idx if rows[i]["duration_sec"] > 30]
+    if too_long:
+        raise SystemExit(f"{len(too_long)} subset recordings exceed 30 s; "
+                         f"the index file does not match the manifest")
+    return idx
+
+
+def check_audio(rows):
+    missing = [r["path"] for r in rows
+               if r["duration_sec"] <= MAX_SYNC_SECONDS and not Path(r["path"]).exists()]
+    if missing:
+        raise SystemExit(f"{len(missing)} recordings to send are missing, first: {missing[0]}")
+
+
+def transcribe(client, config, idx, entry, retries):
+    """One recording. Quota errors are retried with backoff; other errors are not."""
     if entry["duration_sec"] > MAX_SYNC_SECONDS:
-        return {"status": "skipped_too_long", "entry": entry}
-
-    backoff = 1.0
-    last_error = None
-    for attempt in range(MAX_RETRIES + 1):
+        return idx, "too_long", None, None
+    with open(entry["path"], "rb") as f:
+        audio = speech.RecognitionAudio(content=f.read())
+    delay, error = 1.0, None
+    for attempt in range(retries + 1):
         try:
-            with io.open(entry["path"], "rb") as audio_file:
-                content = audio_file.read()
-            audio = speech.RecognitionAudio(content=content)
             response = client.recognize(config=config, audio=audio)
-            hyp = " ".join(r.alternatives[0].transcript for r in response.results) if response.results else ""
-            return {"status": "ok", "entry": entry, "hyp": hyp}
+            hyp = (" ".join(r.alternatives[0].transcript for r in response.results)
+                   if response.results else "")
+            return idx, "ok", hyp, None
         except gexc.ResourceExhausted as e:
-            last_error = str(e)
-            if attempt < MAX_RETRIES:
-                time.sleep(backoff)
-                backoff *= 2
-                continue
+            error = str(e)
+            if attempt < retries:
+                time.sleep(delay)
+                delay *= 2
         except Exception as e:
-            last_error = str(e)
-            break
-
-    return {"status": "failed", "entry": entry, "error": last_error}
+            return idx, "failed", None, str(e)
+    return idx, "failed", None, error
 
 
-print(f"\nTranscribing with {MAX_WORKERS} concurrent workers ...", flush=True)
-progress_lock = threading.Lock()
-completed = 0
-total = len(entries)
-t_start = time.time()
+def fetch(rows, workers, retries):
+    api_key = os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        raise SystemExit("GOOGLE_API_KEY is not set. Export it in your shell; "
+                         "do not write it to a tracked file.")
+    client = speech.SpeechClient(client_options={"api_key": api_key})
+    config = speech.RecognitionConfig(
+        encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+        sample_rate_hertz=16_000,
+        language_code=LANGUAGE_CODE,
+    )
+    outcomes, t0 = {}, time.time()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(transcribe, client, config, i, r, retries)
+                   for i, r in enumerate(rows)]
+        for done, fut in enumerate(concurrent.futures.as_completed(futures), start=1):
+            idx, status, hyp, err = fut.result()
+            outcomes[idx] = (status, hyp, err)
+            if done % 50 == 0 or done == len(rows):
+                print(f"  [{done}/{len(rows)}]  {done / (time.time() - t0):.2f} req/s", flush=True)
+    return outcomes
 
-results = []
-with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-    futures = [executor.submit(transcribe_one, entry) for entry in entries]
-    for future in concurrent.futures.as_completed(futures):
-        results.append(future.result())
-        with progress_lock:
-            completed += 1
-            if completed % PROGRESS_EVERY == 0 or completed == total:
-                elapsed = time.time() - t_start
-                rate = completed / elapsed if elapsed > 0 else 0.0
-                eta = (total - completed) / rate if rate > 0 else float("nan")
-                print(f"  [{completed}/{total}]  ({rate:.2f} req/s, {elapsed:.0f}s elapsed, ~{eta:.0f}s left)", flush=True)
 
-skipped_too_long = sum(1 for r in results if r["status"] == "skipped_too_long")
-failed = sum(1 for r in results if r["status"] == "failed")
-print(f"\nDone. Skipped (too long for sync API): {skipped_too_long}  Failed (after retries): {failed}", flush=True)
+def from_raw(rows, raw_path):
+    """Rebuild outcomes from a raw file. Rows are matched by audio path."""
+    index = {r["path"]: i for i, r in enumerate(rows)}
+    outcomes = {}
+    with open(raw_path, encoding="utf-8") as f:
+        for line in f:
+            o = json.loads(line)
+            idx = index[o["path"]]
+            if rows[idx]["duration_sec"] > MAX_SYNC_SECONDS:
+                raise SystemExit(f"raw file contains a recording that was not sent: {o['path']}")
+            outcomes[idx] = ("ok", o["hypothesis"], None)
+    for i, r in enumerate(rows):
+        if i not in outcomes:
+            outcomes[i] = (("too_long", None, None) if r["duration_sec"] > MAX_SYNC_SECONDS
+                           else ("failed", None, "absent from raw file"))
+    return outcomes
 
-# Save raw predictions to disk
-raw_predictions_path = os.path.join(RESULTS_DIR, "google_stt_raw_predictions.jsonl")
-with open(raw_predictions_path, "w", encoding="utf-8") as f:
-    for r in results:
-        if r["status"] == "ok":
-            f.write(json.dumps({
-                "dialect": r["entry"]["dialect"],
-                "reference": r["entry"]["reference"],
-                "hypothesis": r["hyp"],
-                "path": r["entry"]["path"],
-            }, ensure_ascii=False) + "\n")
-print(f"Raw predictions saved to {raw_predictions_path} (safe from here on regardless of what happens next)", flush=True)
 
-results_by_dialect = {}
-for r in results:
-    if r["status"] != "ok":
-        continue
-    entry = r["entry"]
-    hyp_norm = normalize_amharic(r["hyp"])
-    ref_norm = normalize_amharic(entry["reference"])
-    d = entry["dialect"]
-    results_by_dialect.setdefault(d, {"pred": [], "ref": []})
-    results_by_dialect[d]["pred"].append(hyp_norm)
-    results_by_dialect[d]["ref"].append(ref_norm)
+def write_raw(rows, outcomes, path):
+    with open(path, "w", encoding="utf-8") as f:
+        for i, r in enumerate(rows):
+            status, hyp, _ = outcomes[i]
+            if status == "ok":
+                f.write(json.dumps({"orig_idx": i, "dialect": r["dialect"],
+                                    "reference": r["reference"], "hypothesis": hyp,
+                                    "path": r["path"]}, ensure_ascii=False) + "\n")
+    print(f"raw predictions written to {path}")
 
-from common import config as cfg  # must load before transformers/datasets
-import evaluate as _eval
-wer_metric = _eval.load("wer")
-cer_metric = _eval.load("cer")
 
-final_results = {}
-all_pred, all_ref = [], []
-for dialect, data in results_by_dialect.items():
-    if not data["pred"]:
-        continue
-    wer = wer_metric.compute(predictions=data["pred"], references=data["ref"]) * 100
-    cer = cer_metric.compute(predictions=data["pred"], references=data["ref"]) * 100
-    final_results[dialect] = {"n_samples": len(data["pred"]), "wer": round(wer, 2), "cer": round(cer, 2)}
-    print(f"  {dialect:15s}  n={len(data['pred']):4d}  WER={wer:.2f}%  CER={cer:.2f}%", flush=True)
-    all_pred.extend(data["pred"])
-    all_ref.extend(data["ref"])
+def score(rows, outcomes, only=None):
+    """Per-dialect and overall WER and CER. `only` limits rows to a set of indices."""
+    wer_metric = evaluate.load("wer")
+    cer_metric = evaluate.load("cer")
+    preds, refs = defaultdict(list), defaultdict(list)
+    for i, r in enumerate(rows):
+        if only is not None and i not in only:
+            continue
+        status, hyp, _ = outcomes[i]
+        if status != "ok":
+            continue
+        preds[r["dialect"]].append(normalize_amharic(hyp))
+        refs[r["dialect"]].append(normalize_amharic(r["reference"]))
 
-overall_wer = wer_metric.compute(predictions=all_pred, references=all_ref) * 100
-overall_cer = cer_metric.compute(predictions=all_pred, references=all_ref) * 100
-final_results["OVERALL"] = {"n_samples": len(all_pred), "wer": round(overall_wer, 2), "cer": round(overall_cer, 2)}
-final_results["_meta"] = {"skipped_too_long": skipped_too_long, "failed": failed, "language_code": LANGUAGE_CODE}
+    unknown = set(preds) - set(DIALECTS)
+    if unknown:
+        raise SystemExit(f"unknown dialect labels: {sorted(unknown)}")
 
-print(f"\n{'='*60}\n  GOOGLE STT — RESULTS (on your held-out test set)\n{'='*60}", flush=True)
-for dialect, m in final_results.items():
-    if dialect == "_meta":
-        continue
-    print(f"  {dialect:<18} n={m['n_samples']:>5}  WER={m['wer']:>6.2f}%  CER={m['cer']:>6.2f}%", flush=True)
+    results = {}
+    for d in DIALECTS:
+        if preds[d]:
+            results[d] = {
+                "n_samples": len(preds[d]),
+                "wer": round(wer_metric.compute(predictions=preds[d], references=refs[d]) * 100, 2),
+                "cer": round(cer_metric.compute(predictions=preds[d], references=refs[d]) * 100, 2),
+            }
+    all_p = [p for d in DIALECTS for p in preds[d]]
+    all_r = [r for d in DIALECTS for r in refs[d]]
+    results["OVERALL"] = {
+        "n_samples": len(all_p),
+        "wer": round(wer_metric.compute(predictions=all_p, references=all_r) * 100, 2),
+        "cer": round(cer_metric.compute(predictions=all_p, references=all_r) * 100, 2),
+    }
+    return results
 
-out_path = os.path.join(RESULTS_DIR, "google_stt_results.json")
-with open(out_path, "w", encoding="utf-8") as f:
-    json.dump(final_results, f, ensure_ascii=False, indent=2)
-print(f"\nSaved to {out_path}", flush=True)
+
+def main():
+    args = parse_args()
+    rows = load_manifest()
+
+    name = args.name + ("_subset688" if args.subset else "")
+    raw_path = cfg.GOOGLE / f"{args.name}_raw_predictions.jsonl"
+    out_path = cfg.GOOGLE / f"{name}_results.json"
+
+    if out_path.exists() and not args.overwrite:
+        raise SystemExit(f"{out_path} exists; pass --overwrite or choose --name")
+
+    if args.rescore:
+        outcomes = from_raw(rows, cfg.require(cfg.GOOGLE / args.raw))
+    else:
+        if raw_path.exists() and not args.overwrite:
+            raise SystemExit(f"{raw_path} exists; pass --overwrite or choose --name")
+        check_audio(rows)  # check before any request is billed
+        outcomes = fetch(rows, args.workers, args.retries)
+
+    counts = Counter(status for status, _, _ in outcomes.values())
+    print(f"returned: {counts['ok']:,}  not sent (over {MAX_SYNC_SECONDS} s): {counts['too_long']:,}"
+          f"  failed: {counts['failed']:,}")
+
+    failed = sorted(i for i, (s, _, _) in outcomes.items() if s == "failed")
+    if failed and not args.allow_failures:
+        for i in failed[:5]:
+            print(f"  failed: {rows[i]['path']}  ({outcomes[i][2]})")
+        raise SystemExit(f"{len(failed)} requests failed; nothing written. "
+                         f"Rerun, or pass --allow-failures.")
+    if counts["ok"] != EXPECTED_SENT and not args.allow_failures:
+        raise SystemExit(f"{counts['ok']} returned, expected {EXPECTED_SENT}")
+
+    if not args.rescore:
+        write_raw(rows, outcomes, raw_path)
+
+    only = load_subset(rows) if args.subset else None
+    results = score(rows, outcomes, only)
+    results["_meta"] = {
+        "mode": "rescore" if args.rescore else "api",
+        "raw_file": str(cfg.GOOGLE / args.raw) if args.rescore else raw_path.name,
+        "scope": f"688 complete-recording subset" if args.subset else "full test set (sent recordings)",
+        "sent": counts["ok"],
+        "not_sent_over_limit": counts["too_long"],
+        "failed": counts["failed"],
+        "max_sync_seconds": MAX_SYNC_SECONDS,
+        "language_code": LANGUAGE_CODE,
+        "metric": "evaluate wer/cer on normalized text, same counting as the Whisper runs",
+    }
+    out_path.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    for d, m in results.items():
+        if d != "_meta":
+            print(f"  {d:<14} n={m['n_samples']:>5}  WER={m['wer']:>6.2f}%  CER={m['cer']:>6.2f}%")
+    print(f"saved {out_path}")
+
+
+if __name__ == "__main__":
+    main()
