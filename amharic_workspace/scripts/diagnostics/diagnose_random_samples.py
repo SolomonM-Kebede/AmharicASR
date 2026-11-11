@@ -1,5 +1,6 @@
 import os
 import json
+from common import config as cfg  # must load before transformers/datasets
 import torch
 import random
 from datasets import load_from_disk

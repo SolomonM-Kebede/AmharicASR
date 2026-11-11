@@ -1,7 +1,9 @@
 import sys, json, numpy as np, jiwer
+from common import config as cfg  # must load before transformers/datasets
 from datasets import load_from_disk
 
-name_a, path_a, name_b, path_b = sys.argv[1:5]        # WER(b) - WER(a): negative means b is better
+# WER(b) - WER(a): negative means b is better
+name_a, path_a, name_b, path_b = sys.argv[1:5]        
 B = 10_000
 T = load_from_disk("phase2_leyu/dataset_cache_joint_independent")["test"].select_columns(["speaker_id", "dialect"])
 spk_all, dia_all = T["speaker_id"], T["dialect"]

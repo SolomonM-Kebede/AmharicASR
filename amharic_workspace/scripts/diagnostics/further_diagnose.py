@@ -10,6 +10,7 @@ os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
 import json, torch
+from common import config as cfg  # must load before transformers/datasets
 from datasets import load_from_disk
 from transformers import WhisperProcessor, WhisperForConditionalGeneration, Seq2SeqTrainingArguments, Seq2SeqTrainer
 from dataclasses import dataclass

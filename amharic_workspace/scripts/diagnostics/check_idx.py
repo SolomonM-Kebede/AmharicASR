@@ -1,16 +1,39 @@
+"""Check that the per-sample predictions agree with the test manifest.
+
+Compares the reference stored in each per-utterance record with the reference
+in the test manifest, at the same index. Run from the workspace root after
+sourcing env.amh.sh.
+"""
 import json
 
-MANIFEST = "/home/stud_homes/s8345520/AmharicASR/amharic_workspace/test_set_audio_export/manifest.jsonl"  # replace with your manifest path
-PERSAMPLE = "/home/stud_homes/s8345520/AmharicASR/amharic_workspace/eval_controls/c4b_bfloat16_persample.jsonl"
+from common import config as cfg
 
-rows = [json.loads(l) for l in open(MANIFEST, encoding="utf-8")]
-pers = [json.loads(l) for l in open(PERSAMPLE, encoding="utf-8")]
+MANIFEST = cfg.ROOT / "test_set_audio_export" / "manifest.jsonl"
+PERSAMPLE = cfg.PERSAMPLE / "c4b_bfloat16_persample.jsonl"
 
-mismatches = [p["orig_idx"] for p in pers if rows[p["orig_idx"]]["reference"] != p["reference"]]
-print("rows:", len(rows), "persample lines:", len(pers))
-print("reference mismatches:", len(mismatches))
-if mismatches:
-    i = mismatches[0]
-    print("first mismatch orig_idx:", i)
-    print("manifest:", rows[i]["reference"])
-    print("persample:", [p["reference"] for p in pers if p["orig_idx"] == i][0])
+
+def read_jsonl(path):
+    with open(path, encoding="utf-8") as f:
+        return [json.loads(line) for line in f]
+
+
+def main():
+    rows = read_jsonl(cfg.require(MANIFEST))
+    pers = read_jsonl(cfg.require(PERSAMPLE))
+    by_idx = {p["orig_idx"]: p for p in pers}
+
+    mismatches = [
+        p["orig_idx"] for p in pers
+        if rows[p["orig_idx"]]["reference"] != p["reference"]
+    ]
+    print(f"manifest rows: {len(rows):,}  per-sample lines: {len(pers):,}")
+    print(f"reference mismatches: {len(mismatches):,}")
+    if mismatches:
+        i = mismatches[0]
+        print(f"first mismatch orig_idx: {i}")
+        print(f"  manifest: {rows[i]['reference']!r}")
+        print(f"  persample: {by_idx[i]['reference']!r}")
+
+
+if __name__ == "__main__":
+    main()

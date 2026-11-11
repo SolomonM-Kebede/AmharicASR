@@ -1,3 +1,4 @@
+from data.normalize import normalize_amharic
 import json, jiwer
 
 AMHARIC_CHAR_MAP = {

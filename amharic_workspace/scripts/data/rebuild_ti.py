@@ -32,6 +32,7 @@ for order, sizes, nspk, te_texts in hits[:1]:
     
 
 import json, numpy as np
+from common import config as cfg  # must load before transformers/datasets
 from transformers import WhisperTokenizer
 tok = WhisperTokenizer.from_pretrained("openai/whisper-large-v3")
 files = {   # add every per-sample file behind a reported number (A2, A3, A4, B1, C1, C2, C3, C4)

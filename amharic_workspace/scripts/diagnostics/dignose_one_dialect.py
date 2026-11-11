@@ -1,4 +1,5 @@
 import os, torch
+from common import config as cfg  # must load before transformers/datasets
 from datasets import load_from_disk
 from transformers import WhisperProcessor, WhisperForConditionalGeneration, GenerationConfig
 from peft import PeftModel

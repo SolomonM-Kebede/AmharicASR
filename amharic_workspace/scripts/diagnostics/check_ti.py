@@ -1,98 +1,141 @@
-# from datasets import load_from_disk
-# ti = load_from_disk("phase2_leyu/dataset_cache_joint_independent")
-# print(ti)                                  # check the column names before selecting
-# cols = ["speaker_id", "dialect", "norm_text"]          # adapt to the printed names
-# d = {k: v.select_columns(cols).to_pandas() for k, v in ti.items()}
-# tr_, va_, te_ = d["train"], d["validation"], d["test"]
+"""Common Voice pool, text-mark sensitivity, and saved training arguments.
 
-# print("utts:", {k: len(v) for k, v in d.items()})
-# print("speakers:", {k: v.speaker_id.nunique() for k, v in d.items()})
-# print("test speakers also in train:", len(set(te_.speaker_id) & set(tr_.speaker_id)))
-# T = {k: set(v.norm_text) for k, v in d.items()}
-# print("text overlap train&val, train&test, val&test:",
-#       len(T["train"] & T["validation"]), len(T["train"] & T["test"]), len(T["validation"] & T["test"]))
-# print("distinct texts:", {k: len(t) for k, t in T.items()})
-# print(te_.dialect.value_counts(normalize=True).round(3).to_dict())
-# print(tr_.dialect.value_counts(normalize=True).round(3).to_dict())
-# import ast, glob, hashlib, collections, pandas as pd
-# from datasets import load_from_disk
+1. Counts the clips in each Common Voice TSV that the C2/C3 pool uses.
+2. Measures how the Ethiopic word-separator marks and invisible characters
+   change WER for the per-sample predictions of C2 and C4.
+3. Prints the training arguments saved with the C2 and C4 runs.
 
-# def load_normalizer(path):
-#     tree = ast.parse(open(path, encoding="utf8").read())
-#     keep = [n for n in tree.body if
-#             (isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id in ("AMHARIC_CHAR_MAP", "PUNCT") for t in n.targets))
-#             or (isinstance(n, ast.FunctionDef) and n.name == "normalize_amharic")
-#             or (isinstance(n, ast.Import) and all(a.name in ("re", "unicodedata", "string") for a in n.names))]
-#     if not any(isinstance(n, ast.FunctionDef) for n in keep):
-#         return None
-#     ns = {}
-#     exec(compile(ast.Module(body=keep, type_ignores=[]), path, "exec"), ns)
-#     return ns["normalize_amharic"]
+Run from the workspace root after sourcing env.amh.sh.
+"""
+from common import config as cfg  # must load before transformers/datasets
 
-# ds = load_from_disk("phase2_leyu/dataset_cache_joint_independent")
-# raw = [t for sp in ds.values() for t in sp.select_columns(["text"])["text"] if isinstance(t, str)]
-# cv = pd.read_csv("cv-corpus-25.0-2026-03-09/am/validated.tsv", sep="\t", quoting=3,
-#                  usecols=["sentence"]).sentence.dropna().tolist()
-# extra = ["ሠላም\u1361ሐገር", "ዐ\u1367 \u1368 x:y", "A\xa0B   C", "ፀሐይ ዓለም ሥራ ኅሊና", "ሗ ኋ"]
-# corpus = raw + cv + extra
+import json
+import re
 
-# groups, outs = collections.defaultdict(list), {}
-# for f in sorted(glob.glob("*.py")):
-#     try:
-#         fn = load_normalizer(f)
-#         if fn is None:
-#             continue
-#         o = [fn(t) for t in corpus]
-#     except Exception as e:
-#         print("skip", f, type(e).__name__); continue
-#     h = hashlib.md5("\x00".join(o).encode()).hexdigest()[:8]
-#     groups[h].append(f); outs[h] = o
-
-# major = max(groups, key=lambda h: len(groups[h]))
-# print({h: len(v) for h, v in groups.items()}, "| strings:", len(corpus))
-# for h, files in groups.items():
-#     print(h, f"{len(files)} files (majority)" if h == major else files)
-#     if h != major:
-#         d = [i for i in range(len(corpus)) if outs[h][i] != outs[major][i]]
-#         print("   differing strings:", len(d))
-#         for i in d[:3]:
-#             print("   ", repr(corpus[i][:50]), "->", repr(outs[major][i][:50]), "|", repr(outs[h][i][:50]))
-import os, pandas as pd
-d = "cv-corpus-25.0-2026-03-09/am/"
-fr = {n: pd.read_csv(d + n + ".tsv", sep="\t", usecols=["client_id", "path", "sentence"], dtype=str)
-      for n in ("train", "dev", "test", "validated", "other") if os.path.exists(d + n + ".tsv")}
-print({k: len(v) for k, v in fr.items()}, "| sum:", sum(len(v) for v in fr.values()), "(log: 2,692)")
-cv = pd.concat(fr.values())
-print("unique clips:", cv.path.nunique(), "| unique sentences:", cv.sentence.nunique(),
-      "| speakers:", cv.client_id.nunique(), "| clips in several files:", int((cv.path.value_counts() > 1).sum()))
-
-import re, json, jiwer, numpy as np
+import pandas as pd
+import torch
 from datasets import load_from_disk
-ok = lambda c: 0x1200 <= ord(c) <= 0x135A or c == " " or (c.isascii() and c.isalnum())
-ds = load_from_disk("phase2_leyu/dataset_cache_joint_independent")
-for p, d in ds.items():
-    T = d.select_columns(["norm_text"])["norm_text"]
-    print(p, "utts with a non-clean char: %.1f%%" % (100 * np.mean([any(not ok(c) for c in s) for s in T])),
-          "| with U+200B: %.1f%%" % (100 * np.mean(["\u200b" in s for s in T])))
 
-def strict(s):
-    s = re.sub("[\u200b\ufe0f\u20e3\ufffd]", "", s)
-    s = "".join(c if (0x1200 <= ord(c) <= 0x135A or 0x1369 <= ord(c) <= 0x137C or c == " " or (c.isascii() and c.isalnum())) else " " for c in s)
-    return " ".join(s.split())
+from common.bootstrap_utils import word_errors
 
-res = {}
-for name, P in {"C4": "results/persample/fullft_joint_indep_TEST_persample.jsonl",
-                "C2": "results/persample/results_raw_persample.jsonl"}.items():
-    R = [json.loads(l) for l in open(P)]
-    a = jiwer.wer([r["reference"] for r in R], [r["prediction"] for r in R]) * 100
-    b = jiwer.wer([strict(r["reference"]) for r in R], [strict(r["prediction"]) for r in R]) * 100
-    res[name] = (a, b); print(name, round(a, 2), "->", round(b, 2), "| diff", round(b - a, 2))
-print("C4 - C2 gap before/after:", round(res["C4"][0] - res["C2"][0], 2), round(res["C4"][1] - res["C2"][1], 2))
+CV_FILES = ["train", "dev", "test", "validated", "other"]
+MARKS = "\u1361\u1367\u1368"                  # Ethiopic word separator and two related marks
+INVISIBLE = "\u200b\ufe0f\u20e3\ufffd"        # zero-width space, variation selectors, replacement character
 
-import torch, glob
-for pat in ("phase_fullft_joint_indep/models/*/training_args.bin",
-            "single_phase_raw_whisper/models/joint_lora_run/*/training_args.bin"):
-    for p in sorted(glob.glob(pat))[:1]:
-        a = torch.load(p, weights_only=False)
-        print(p.split("/")[0], a.optim, a.learning_rate, a.warmup_steps,
-              a.per_device_train_batch_size, a.gradient_accumulation_steps, a.bf16)
+PERSAMPLE = {
+    "C2 (LoRA)": cfg.PERSAMPLE / "results_raw_persample.jsonl",
+    "C4 (full FT, FP16 weights)": cfg.PERSAMPLE / "fullft_joint_indep_TEST_persample.jsonl",
+}
+TRAINING_DIRS = {
+    "C2": cfg.DATA_DIR / "joint_composition_ablation" / "models" / "raw_joint_lora_run",
+    "C4": cfg.DATA_DIR / "phase_fullft_joint_indep" / "models",
+}
+
+
+def read_jsonl(path):
+    with open(cfg.require(path), encoding="utf-8") as f:
+        return [json.loads(line) for line in f]
+
+
+def in_letter_set(ch):
+    """Ethiopic syllables, space, and ASCII alphanumerics."""
+    return 0x1200 <= ord(ch) <= 0x135A or ch == " " or (ch.isascii() and ch.isalnum())
+
+
+def strict_clean(text):
+    """Remove invisible characters, and map everything outside the letter set and
+    Ethiopic punctuation and digits to a space."""
+    text = re.sub(f"[{INVISIBLE}]", "", text)
+    text = "".join(
+        ch if (in_letter_set(ch) or 0x1369 <= ord(ch) <= 0x137C) else " "
+        for ch in text
+    )
+    return " ".join(text.split())
+
+
+def strip_marks(text):
+    return " ".join(re.sub(f"[{MARKS}]", " ", text).split())
+
+
+def corpus_wer(refs, hyps):
+    """Corpus WER with the same word counting as the bootstrap. Empty references are skipped."""
+    errors = words = 0
+    for ref, hyp in zip(refs, hyps):
+        if not ref.strip():
+            continue
+        e, n = word_errors(ref, hyp)
+        errors += e
+        words += n
+    return 100.0 * errors / words
+
+
+def check_common_voice_pool():
+    print("1. Common Voice pool (thesis: 2,692 rows, 1,622 distinct clips, 46 speakers)")
+    cfg.require(cfg.CV_DIR / "train.tsv")
+    frames = {}
+    for name in CV_FILES:
+        path = cfg.CV_DIR / f"{name}.tsv"
+        if path.exists():
+            frames[name] = pd.read_csv(path, sep="\t", quoting=3, dtype=str,
+                                       usecols=["client_id", "path", "sentence"])
+    for name, df in frames.items():
+        print(f"   {name + '.tsv':15s} {len(df):>6,} rows")
+
+    pool = pd.concat(frames.values(), ignore_index=True)
+    shared = int((pool.path.value_counts() > 1).sum())
+    print(f"   rows: {len(pool):,}")
+    print(f"   distinct clips: {pool.path.nunique():,}")
+    print(f"   distinct speakers: {pool.client_id.nunique():,}")
+    print(f"   clips listed in more than one file: {shared:,} (thesis: 1,070)")
+
+
+def check_text_marks():
+    print("\n2. WER with Ethiopic marks and invisible characters removed")
+    ds = load_from_disk(str(cfg.require(cfg.LEYU_JOINT_CACHE)))
+    for split, data in ds.items():
+        texts = data.select_columns(["norm_text"])["norm_text"]
+        unclean = sum(any(not in_letter_set(ch) for ch in t) for t in texts) / len(texts)
+        zero_width = sum("\u200b" in t for t in texts) / len(texts)
+        print(f"   {split:10s} utterances with a non-letter character: {100 * unclean:5.1f}%"
+              f" | with U+200B: {100 * zero_width:5.1f}%")
+
+    results = {}
+    for label, path in PERSAMPLE.items():
+        rows = read_jsonl(path)
+        refs = [r["reference"] for r in rows]
+        hyps = [r["prediction"] for r in rows]
+        as_stored = corpus_wer(refs, hyps)
+        no_marks = corpus_wer([strip_marks(r) for r in refs], [strip_marks(h) for h in hyps])
+        strict = corpus_wer([strict_clean(r) for r in refs], [strict_clean(h) for h in hyps])
+        results[label] = (as_stored, strict)
+        print(f"   {label}: as stored {as_stored:.2f} | marks removed {no_marks:.2f}"
+              f" | strict {strict:.2f}")
+
+    (c4_raw, c4_strict), (c2_raw, c2_strict) = (
+        results["C4 (full FT, FP16 weights)"], results["C2 (LoRA)"])
+    print(f"   C4 minus C2, as stored: {c4_raw - c2_raw:+.2f}"
+          f" | strict: {c4_strict - c2_strict:+.2f}")
+
+
+def print_training_args():
+    print("\n3. Saved training arguments")
+    for label, folder in TRAINING_DIRS.items():
+        found = sorted(folder.rglob("training_args.bin"))
+        if not found:
+            print(f"   {label}: no training_args.bin under {folder}")
+            continue
+        args = torch.load(found[0], weights_only=False)
+        print(f"   {label}: {found[0]}")
+        print(f"     optim={args.optim} lr={args.learning_rate} warmup={args.warmup_steps}"
+              f" batch={args.per_device_train_batch_size}"
+              f" accum={args.gradient_accumulation_steps} bf16={args.bf16}")
+
+
+def main():
+    check_common_voice_pool()
+    check_text_marks()
+    print_training_args()
+
+
+if __name__ == "__main__":
+    main()

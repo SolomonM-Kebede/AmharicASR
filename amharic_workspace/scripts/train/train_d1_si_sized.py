@@ -1,3 +1,4 @@
+
 """
 Amharic ASR — Joint (Speaker + Text) Independent Ablation, Leyu-only
 Dataset : dataset_cache_joint_independent (0 speaker overlap, ~99.5%+ text independence)
@@ -6,68 +7,41 @@ Model   : Phase 1 merged base + fresh LoRA adapter
 
 import os
 
-HOME_DIR = os.path.expanduser("~")
+# Config sets the Hugging Face cache and offline flags. It must load before transformer
+from common import config as cfg  
 
-CUSTOM_CACHE = os.path.join(HOME_DIR, "AmharicASR", "hf_cache")
+import io
+from dataclasses import dataclass
+from typing import Any, Dict, List
 
-os.environ["HF_HOME"] = CUSTOM_CACHE
-os.environ["HF_DATASETS_CACHE"] = CUSTOM_CACHE
-os.environ["HF_HUB_OFFLINE"] = "1"
-os.environ["TRANSFORMERS_OFFLINE"] = "1"
-
-BASE_DIR = os.path.join(HOME_DIR, "AmharicASR", "amharic_workspace")
-
-DATASET_DIR = os.path.join(
-    BASE_DIR, "phase2_leyu", "dataset_cache_si_size_matched"
+import librosa
+import torch
+from datasets import Audio, load_from_disk
+from peft import LoraConfig, get_peft_model
+from transformers import (
+    EarlyStoppingCallback,
+    Seq2SeqTrainer,
+    Seq2SeqTrainingArguments,
+    WhisperForConditionalGeneration,
+    WhisperProcessor,
 )
 
-OUTPUT_DIR = os.path.join(
-    BASE_DIR, "phase2_leyu", "models", "d1_si_sized_lora_run"
-)
+from data.normalize import normalize_amharic  
 
-PHASE1_MERGED = os.path.join(
-    BASE_DIR, "phase1_curriculum", "models", "phase1_best_model_merged"
-)
+DATASET_DIR   = cfg.D1_CACHE
+OUTPUT_DIR    = cfg.DATA_DIR / "phase2_leyu" / "models" / "d1_si_sized_lora_run"
+PHASE1_MERGED = cfg.PHASE1_MERGED
 
 print("PHASE1_MERGED:", PHASE1_MERGED)
 
-if not os.path.isdir(PHASE1_MERGED):
-    raise FileNotFoundError(
-        f"Phase 1 merged model directory does not exist: {PHASE1_MERGED}"
-    )
+if not PHASE1_MERGED.is_dir():
+    raise FileNotFoundError(f"Phase 1 merged model directory does not exist: {PHASE1_MERGED}")
 
 print("Checkpoint files:", os.listdir(PHASE1_MERGED))
 
-import io
-import torch
-import librosa
-from dataclasses import dataclass
-from typing import Any, Dict, List
-from datasets import load_from_disk, Audio
-from transformers import (
-    WhisperProcessor,
-    WhisperForConditionalGeneration,
-    Seq2SeqTrainingArguments,
-    Seq2SeqTrainer,
-    EarlyStoppingCallback,
-)
-from peft import LoraConfig, get_peft_model
-
-# removed: duplicate BASE_DIR with a literal ~ (header block defines it correctly)
-DATASET_DIR   = os.path.join(BASE_DIR, "phase2_leyu/dataset_cache_si_size_matched")
-OUTPUT_DIR    = os.path.join(BASE_DIR, "phase2_leyu/models/d1_si_sized_lora_run")
-PHASE1_MERGED = os.path.expanduser(PHASE1_MERGED)
-
-print("Model path:", PHASE1_MERGED)
-print("Directory exists:", os.path.isdir(PHASE1_MERGED))
-
-if not os.path.isdir(PHASE1_MERGED):
-    raise FileNotFoundError(f"Model directory not found: {PHASE1_MERGED}")
 EVAL_SUBSET_SIZE = int(os.environ.get("EVAL_SUBSET_SIZE", 800))
 
-# ---------------------------------------------------------
-# 1. PROCESS DATASET FIRST — before any CUDA context exists (fork safety)
-# ---------------------------------------------------------
+# PROCESS DATASET FIRST — before any CUDA context exists (fork safety)
 print("Loading processor...")
 processor = WhisperProcessor.from_pretrained(PHASE1_MERGED, language="amharic", task="transcribe")
 DECODER_START_TOKEN_ID = processor.tokenizer.convert_tokens_to_ids("<|startoftranscript|>")
@@ -102,9 +76,8 @@ if 0 < EVAL_SUBSET_SIZE < len(processed_ds["validation"]):
 else:
     train_time_eval_dataset = processed_ds["validation"]
 
-# ---------------------------------------------------------
-# 2. LOAD MODEL — only now, after multiprocessing is done
-# ---------------------------------------------------------
+
+# LOAD MODEL — only now, after multiprocessing is done
 print("Loading Phase 1 merged model into GPU...")
 model = WhisperForConditionalGeneration.from_pretrained(PHASE1_MERGED, torch_dtype=torch.bfloat16)
 model.config.use_cache = True   # matches Phase 2's fix; do NOT revert to False
@@ -122,28 +95,11 @@ model = get_peft_model(model, config)
 model.enable_input_require_grads()
 model.print_trainable_parameters()
 
-# --- Explicitly force language + task (the gap found in the previous run) ---
+# Explicitly force language + task (the gap found in the previous run) 
 model.generation_config.forced_decoder_ids = forced_ids
 model.generation_config.max_length = 448
 model.generation_config.max_new_tokens = None
 
-# --- Normalization (kept only for compute_metrics decoding, not label prep) ---
-AMHARIC_CHAR_MAP = {
-    "ሐ": "ሀ", "ሑ": "ሁ", "ሒ": "ሂ", "ሓ": "ሃ", "ሔ": "ሄ", "ሕ": "ህ", "ሖ": "ሆ",
-    "ኀ": "ሀ", "ኁ": "ሁ", "ኂ": "ሂ", "ኃ": "ሃ", "ኄ": "ሄ", "ኅ": "ህ", "ኆ": "ሆ",
-    "ዐ": "አ", "ዑ": "ኡ", "ዒ": "ኢ", "ዓ": "ኣ", "ዔ": "ኤ", "ዕ": "እ", "ዖ": "ኦ",
-    "ሠ": "ሰ", "ሡ": "ሱ", "ሢ": "ሲ", "ሣ": "ሳ", "ሤ": "ሴ", "ሥ": "ስ", "ሦ": "ሶ",
-    "ፀ": "ጸ", "ፁ": "ጹ", "ፂ": "ጺ", "ፃ": "ጻ", "ፄ": "ጼ", "ፅ": "ጽ", "ፆ": "ጾ",
-}
-PUNCT = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~።፣፤፥፦'
-def normalize_amharic(text):
-    for src, tgt in AMHARIC_CHAR_MAP.items():
-        text = text.replace(src, tgt)
-    for p in PUNCT:
-        text = text.replace(p, " ")
-    return " ".join(text.split()).strip()
-
-@dataclass
 class DataCollatorSpeechSeq2SeqWithPadding:
     processor: Any
     decoder_start_token_id: int

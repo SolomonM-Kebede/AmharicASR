@@ -1,3 +1,4 @@
+from data.normalize import normalize_amharic
 
 """
 Amharic ASR — Google Speech-to-Text evaluation on the SAME test set 
@@ -145,6 +146,7 @@ for r in results:
     results_by_dialect[d]["pred"].append(hyp_norm)
     results_by_dialect[d]["ref"].append(ref_norm)
 
+from common import config as cfg  # must load before transformers/datasets
 import evaluate as _eval
 wer_metric = _eval.load("wer")
 cer_metric = _eval.load("cer")

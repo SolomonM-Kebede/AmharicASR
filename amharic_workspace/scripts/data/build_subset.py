@@ -1,4 +1,5 @@
 import json
+from common import config as cfg  # must load before transformers/datasets
 from transformers import WhisperTokenizer
 
 MANIFEST = "/home/stud_homes/s8345520/AmharicASR/amharic_workspace/test_set_audio_export/manifest.jsonl"  # replace with the path to the test manifest

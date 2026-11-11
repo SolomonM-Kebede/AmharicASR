@@ -1,4 +1,6 @@
+from data.normalize import normalize_amharic
 import os
+from common import config as cfg  # must load before transformers/datasets
 from datasets import load_dataset
 from tqdm import tqdm
 

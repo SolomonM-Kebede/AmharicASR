@@ -1,3 +1,4 @@
+from data.normalize import normalize_amharic
 """
 Amharic ASR — Joint (Speaker + Text) Independent Split Feasibility Check
 Computes, per dialect and overall, how much Leyu training data survives
@@ -12,6 +13,7 @@ os.makedirs(CUSTOM_CACHE, exist_ok=True)
 os.environ["HF_HOME"] = CUSTOM_CACHE
 os.environ["HF_DATASETS_CACHE"] = CUSTOM_CACHE
 
+from common import config as cfg  # must load before transformers/datasets
 from datasets import load_dataset, concatenate_datasets, DatasetDict, Audio
 from sklearn.model_selection import train_test_split as sk_split
 

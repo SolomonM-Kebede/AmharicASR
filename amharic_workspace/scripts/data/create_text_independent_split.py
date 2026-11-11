@@ -1,6 +1,8 @@
+from data.normalize import normalize_amharic
 import os
 import random
 from collections import defaultdict
+from common import config as cfg  # must load before transformers/datasets
 from datasets import load_dataset, concatenate_datasets, DatasetDict, Audio
 from sklearn.model_selection import train_test_split
 

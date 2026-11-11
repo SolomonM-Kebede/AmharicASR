@@ -1,4 +1,5 @@
 import json, collections
+from common import config as cfg  # must load before transformers/datasets
 from datasets import load_from_disk
 
 te = load_from_disk("phase2_leyu/dataset_cache_joint_independent")["test"]

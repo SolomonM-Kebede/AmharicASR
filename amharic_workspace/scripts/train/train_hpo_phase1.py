@@ -1,3 +1,4 @@
+
 """
 Amharic ASR — Phase 1 HPO Training
 Dataset : ALFFA + Common Voice (standard dialect)
@@ -18,6 +19,10 @@ import pandas as pd
 import soundfile as sf
 import torch
 import matplotlib
+
+# Config sets the Hugging Face cache and offline flags. It must load before transformers
+from common import config as cfg  
+
 matplotlib.use("Agg")
 
 from datasets import (
@@ -33,8 +38,7 @@ from transformers import (
     EarlyStoppingCallback,
 )
 from peft import LoraConfig, get_peft_model
-from dotenv import load_dotenv
-
+from data.normalize import normalize_amharic    
 import ray
 from ray import tune
 from ray.tune.schedulers import ASHAScheduler
@@ -44,72 +48,44 @@ from ray.tune.schedulers import ASHAScheduler
 print(f"torch  : {torch.__version__}")
 N_GPUS = torch.cuda.device_count()
 if N_GPUS == 0:
-    raise RuntimeError("No GPU found — aborting.")
+    raise RuntimeError("No GPU found; aborting.")
 print(f"GPUs   : {N_GPUS}  ({torch.cuda.get_device_name(0)})")
 VRAM_GB = torch.cuda.get_device_properties(0).total_memory / 1e9
 print(f"VRAM   : {VRAM_GB:.0f} GB")
 
 
-# Configuration
-load_dotenv()
-os.environ["HF_TOKEN"] = os.getenv("HF_TOKEN", "")
+# Paths and settings come from config (override with AMHARIC_* in env.amh.sh)
+PHASE1_DIR   = cfg.DATA_DIR / "phase1_curriculum"
+OUTPUT_DIR   = PHASE1_DIR / "models"
+LOG_DIR      = PHASE1_DIR / "logs"
+DATA_CACHE   = PHASE1_DIR / "dataset_cache"
 
-BASE_DIR   = "/tmp/amharic_workspace"
-PHASE1_DIR = os.path.join(BASE_DIR, "phase1_curriculum")
+for d in (OUTPUT_DIR, LOG_DIR, DATA_CACHE):
+    d.mkdir(parents=True, exist_ok=True)
 
-OUTPUT_DIR  = os.path.join(PHASE1_DIR, "models")
-LOG_DIR     = os.path.join(PHASE1_DIR, "logs")
-DATA_CACHE  = os.path.join(PHASE1_DIR, "dataset_cache")
-HF_HOME     = os.path.join(PHASE1_DIR, "hf_cache")
-HF_DS_CACHE = os.path.join(PHASE1_DIR, "hf_datasets")
-
-os.environ["HF_HOME"]            = HF_HOME
-os.environ["HF_DATASETS_CACHE"]  = HF_DS_CACHE
-
-for d in [OUTPUT_DIR, LOG_DIR, DATA_CACHE, HF_HOME, HF_DS_CACHE]:
-    os.makedirs(d, exist_ok=True)
-
-MODEL_NAME   = "openai/whisper-large-v3"
-LOCAL_CV_DIR = os.path.join(BASE_DIR, "cv-corpus-25.0-2026-03-09/am")
+MODEL_NAME   = cfg.WHISPER_MODEL
+LOCAL_CV_DIR = cfg.require(cfg.CV_DIR)
 
 MAX_TEXT_CHARS   = 350
-MAX_LABEL_LENGTH = 448
-SEED             = 42
+MAX_LABEL_LENGTH = cfg.MAX_LABEL_LENGTH
+SEED             = cfg.SEED
 
 HPO_N_TRIALS   = 6
-HPO_MAX_EPOCHS = 3          
+HPO_MAX_EPOCHS = 3
 HPO_EVAL_STEPS = 200
-HPO_BATCH_SIZE = 16         
-HPO_GRAD_ACCUM = 2          
+HPO_BATCH_SIZE = 16
+HPO_GRAD_ACCUM = 2
 
 FULL_MAX_EPOCHS = 10
 FULL_EVAL_STEPS = 300
 
-LORA_R               = 64
-LORA_ALPHA           = 128
-LORA_TARGET_MODULES  = [
+LORA_R              = 64
+LORA_ALPHA          = 128
+LORA_TARGET_MODULES = [
     "q_proj", "v_proj", "k_proj", "out_proj",
     "encoder_attn.q_proj", "encoder_attn.v_proj",
     "encoder_attn.k_proj", "encoder_attn.out_proj",
 ]
-
-# Amharic normalization
-AMHARIC_CHAR_MAP = {
-    "ሐ": "ሀ", "ሑ": "ሁ", "ሒ": "ሂ", "ሓ": "ሃ", "ሔ": "ሄ", "ሕ": "ህ", "ሖ": "ሆ",
-    "ኀ": "ሀ", "ኁ": "ሁ", "ኂ": "ሂ", "ኃ": "ሃ", "ኄ": "ሄ", "ኅ": "ህ", "ኆ": "ሆ",
-    "ዐ": "አ", "ዑ": "ኡ", "ዒ": "ኢ", "ዓ": "ኣ", "ዔ": "ኤ", "ዕ": "እ", "ዖ": "ኦ",
-    "ሠ": "ሰ", "ሡ": "ሱ", "ሢ": "ሲ", "ሣ": "ሳ", "ሤ": "ሴ", "ሥ": "ስ", "ሦ": "ሶ",
-    "ፀ": "ጸ", "ፁ": "ጹ", "ፂ": "ጺ", "ፃ": "ጻ", "ፄ": "ጼ", "ፅ": "ጽ", "ፆ": "ጾ",
-}
-PUNCT = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~።፣፤፥፦'
-
-def normalize_amharic(text: str) -> str:
-    for src, tgt in AMHARIC_CHAR_MAP.items():
-        text = text.replace(src, tgt)
-    for p in PUNCT:
-        text = text.replace(p, " ")          
-    return " ".join(text.split()).strip()
-
 
 # Dataset preparation
 print(f"\nLoading processor from {MODEL_NAME} ...")

@@ -1,5 +1,7 @@
+from data.normalize import normalize_amharic
 import os
 import io
+from common import config as cfg  # must load before transformers/datasets
 import torch
 import librosa
 from dataclasses import dataclass

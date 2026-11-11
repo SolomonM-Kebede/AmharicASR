@@ -7,6 +7,7 @@ import io
 from collections import Counter
 import numpy as np
 import soundfile as sf
+from common import config as cfg  # must load before transformers/datasets
 from datasets import load_from_disk, Audio
 from transformers import WhisperTokenizer
 

@@ -9,10 +9,11 @@ A difference is 'detected' when its interval excludes zero.
 import json
 import numpy as np
 import jiwer
+from common import config as cfg  # must load before transformers/datasets
 from datasets import load_from_disk
 
-X_JSONL = "results/persample/results_raw_persample.jsonl"   # C2, LoRA
-Y_JSONL = "results/persample/c4b_bfloat16_persample.jsonl"   # C4b, full FT
+X_JSONL = "results/persample/results_raw_persample.jsonl"   
+Y_JSONL = "results/persample/c4b_bfloat16_persample.jsonl"   
 TEST_CACHE = "phase2_leyu/dataset_cache_joint_independent"
 B = 10_000
 SEED = 42

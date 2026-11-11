@@ -1,3 +1,4 @@
+from data.normalize import normalize_amharic
 """
 Amharic ASR — Joint Composition Ablation: Final Evaluation
 Evaluates either arm (raw or phase1) on the shared joint-independent test set,
@@ -16,6 +17,7 @@ import json
 from dataclasses import dataclass
 from typing import Any, Dict, List
 
+from common import config as cfg  # must load before transformers/datasets
 import torch
 import librosa
 from datasets import load_from_disk, Audio

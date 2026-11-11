@@ -1,3 +1,4 @@
+from data.normalize import normalize_amharic
 """
 Amharic ASR — Phase 1 (ALFFA + CV) Evaluation 
 =================================================================
@@ -12,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
 
+from common import config as cfg  # must load before transformers/datasets
 import torch
 import librosa
 from datasets import Dataset

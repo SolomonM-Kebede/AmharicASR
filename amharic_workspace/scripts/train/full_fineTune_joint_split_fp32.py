@@ -1,90 +1,72 @@
+
 """
 Amharic ASR — RQ3 completion: FULL FINE-TUNE (no LoRA) on the joint
 speaker+text-independent split, matched to the best LoRA arm
 (Raw+ALFFA+CV, 32.06% WER) for a clean LoRA-vs-full-fine-tune comparison.
 """
 
+
+from common import config as cfg  
+
+import io
 import os
-
-CUSTOM_CACHE = os.path.expanduser("/home/stud_homes/s8345520/AmharicASR/hf_cache")
-os.makedirs(CUSTOM_CACHE, exist_ok=True)
-os.environ["HF_HOME"] = CUSTOM_CACHE
-os.environ["HF_HUB_CACHE"] = CUSTOM_CACHE
-os.environ["HF_DATASETS_CACHE"] = CUSTOM_CACHE
-os.environ["HF_MODULES_CACHE"] = CUSTOM_CACHE
-
 import random
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
-import io
-#from normalize import normalize_amharic
 
+import librosa
 import numpy as np
 import pandas as pd
 import torch
-import librosa
 from datasets import (
-    load_dataset, concatenate_datasets, DatasetDict, Dataset, Audio, load_from_disk,
+    Audio, Dataset, DatasetDict, concatenate_datasets, load_dataset, load_from_disk,
 )
 from transformers import (
-    WhisperProcessor, WhisperForConditionalGeneration,
-    Seq2SeqTrainingArguments, Seq2SeqTrainer, EarlyStoppingCallback,
+    EarlyStoppingCallback, Seq2SeqTrainer, Seq2SeqTrainingArguments,
+    WhisperForConditionalGeneration, WhisperProcessor,
 )
 from transformers.trainer_utils import get_last_checkpoint
 
+from data.normalize import normalize_amharic  
+
 print(f"torch  : {torch.__version__}")
 if not torch.cuda.is_available():
-    raise RuntimeError("No GPU found — aborting.")
+    raise RuntimeError("No GPU found; aborting.")
 print(f"GPU    : {torch.cuda.get_device_name(0)}")
 print(f"VRAM   : {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
 
-BASE_DIR = os.path.expanduser("/home/stud_homes/s8345520/AmharicASR/amharic_workspace")
-MODEL_NAME = "openai/whisper-large-v3"
-LOCAL_CV_DIR = os.path.join(BASE_DIR, "cv-corpus-25.0-2026-03-09/am")
-JOINT_INDEP_CACHE = os.path.join(BASE_DIR, "phase2_leyu/dataset_cache_joint_independent")
 
-PHASE_DIR   = os.path.join(BASE_DIR, "phase_fullft_joint_indep_fp32")
-OUTPUT_DIR  = os.path.join(PHASE_DIR, "models")
-DATA_CACHE  = os.path.join(BASE_DIR, "phase_fullft_joint_indep", "dataset_cache")
-RESULTS_DIR = os.path.join(PHASE_DIR, "results")
-for d in [OUTPUT_DIR, DATA_CACHE, RESULTS_DIR]:
-    os.makedirs(d, exist_ok=True)
+BASE_DIR          = cfg.REPO_ROOT
+MODEL_NAME        = cfg.WHISPER_MODEL
+LOCAL_CV_DIR      = cfg.CV_DIR
+JOINT_INDEP_CACHE = cfg.require(cfg.LEYU_JOINT_CACHE)
+cfg.require(LOCAL_CV_DIR)
+
+PHASE_DIR   = BASE_DIR / "phase_fullft_joint_indep_fp32"
+OUTPUT_DIR  = PHASE_DIR / "models"
+DATA_CACHE  = BASE_DIR / "phase_fullft_joint_indep" / "dataset_cache"
+RESULTS_DIR = PHASE_DIR / "results"
+for d in (OUTPUT_DIR, DATA_CACHE, RESULTS_DIR):
+    d.mkdir(parents=True, exist_ok=True)
 
 MAX_TEXT_CHARS   = 350
-MAX_LABEL_LENGTH = 448
-SEED             = 42
+MAX_LABEL_LENGTH = cfg.MAX_LABEL_LENGTH
+SEED             = cfg.SEED
 
-LEARNING_RATE   = float(os.environ.get("LEARNING_RATE", 5e-6))
-OPTIM = os.environ.get("OPTIM", "adamw_bnb_8bit")
-WEIGHT_DECAY    = 0.01
-WARMUP_STEPS    = 500
-EPOCHS          = int(os.environ.get("EPOCHS", 10))
-# Default to batch 2 + accum 16 to safely fit full 1.5B AdamW states into 30GB VRAM
-TRAIN_BATCH_SIZE= int(os.environ.get("TRAIN_BATCH_SIZE", 2))
-EVAL_BATCH_SIZE = int(os.environ.get("EVAL_BATCH_SIZE", 4))
-GRAD_ACCUM      = int(os.environ.get("GRAD_ACCUM", 16))   # Effective batch = 32
-EVAL_STEPS      = 200
+# Hyperparameters, overridable from the environment
+LEARNING_RATE           = float(os.environ.get("LEARNING_RATE", 5e-6))
+OPTIM                   = os.environ.get("OPTIM", "adamw_bnb_8bit")
+WEIGHT_DECAY            = 0.01
+WARMUP_STEPS            = 500
+EPOCHS                  = int(os.environ.get("EPOCHS", 10))
+TRAIN_BATCH_SIZE        = int(os.environ.get("TRAIN_BATCH_SIZE", 2))   # memory-driven choice
+EVAL_BATCH_SIZE         = int(os.environ.get("EVAL_BATCH_SIZE", 4))
+GRAD_ACCUM              = int(os.environ.get("GRAD_ACCUM", 16))        # effective batch 32
+EVAL_STEPS              = 200
 EARLY_STOPPING_PATIENCE = 5
-LABEL_SMOOTHING = 0.1
-RESUME_FROM_CHECKPOINT = os.environ.get("RESUME_FROM_CHECKPOINT", "true").lower() == "true"
-
-AMHARIC_CHAR_MAP = {
-    "ሐ": "ሀ", "ሑ": "ሁ", "ሒ": "ሂ", "ሓ": "ሃ", "ሔ": "ሄ", "ሕ": "ህ", "ሖ": "ሆ",
-    "ኀ": "ሀ", "ኁ": "ሁ", "ኂ": "ሂ", "ኃ": "ሃ", "ኄ": "ሄ", "ኅ": "ህ", "ኆ": "ሆ",
-    "ዐ": "አ", "ዑ": "ኡ", "ዒ": "ኢ", "ዓ": "ኣ", "ዔ": "ኤ", "ዕ": "እ", "ዖ": "ኦ",
-    "ሠ": "ሰ", "ሡ": "ሱ", "ሢ": "ሲ", "ሣ": "ሳ", "ሤ": "ሴ", "ሥ": "ስ", "ሦ": "ሶ",
-    "ፀ": "ጸ", "ፁ": "ጹ", "ፂ": "ጺ", "ፃ": "ጻ", "ፄ": "ጼ", "ፅ": "ጽ", "ፆ": "ጾ",
-}
-PUNCT = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~።፣፤፥፦'
-
-def normalize_amharic(text: str) -> str:
-    for src, tgt in AMHARIC_CHAR_MAP.items():
-        text = text.replace(src, tgt)
-    for p in PUNCT:
-        text = text.replace(p, " ")
-    return " ".join(text.split()).strip()
-
+LABEL_SMOOTHING         = 0.1
+RESUME_FROM_CHECKPOINT  = os.environ.get("RESUME_FROM_CHECKPOINT", "true").lower() == "true"
 
 print(f"\nLoading processor from {MODEL_NAME} ...")
 processor = WhisperProcessor.from_pretrained(MODEL_NAME, language="amharic", task="transcribe", cache_dir=CUSTOM_CACHE)

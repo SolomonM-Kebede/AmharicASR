@@ -6,6 +6,7 @@ low-rate bucket.
 """
 import jiwer
 import numpy as np
+from common import config as cfg  # must load before transformers/datasets
 from datasets import load_from_disk
 from common.bootstrap_utils import load, word_errors, cache_ok
 

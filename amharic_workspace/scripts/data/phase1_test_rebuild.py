@@ -1,3 +1,4 @@
+from data.normalize import normalize_amharic
 """
 Amharic ASR — Phase 1 standard-dialect TEST split rebuild
 ============================================================

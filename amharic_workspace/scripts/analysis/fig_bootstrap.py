@@ -10,9 +10,9 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-CACHE = "/home/stud_homes/s8345520/AmharicASR/amharic_workspace/phase2_leyu/dataset_cache_joint_independent"
-C2 = "results/persample/results_raw_persample.jsonl"                       # LoRA, raw init
-C4 = "results/persample/fullft_joint_indep_TEST_persample.jsonl"    # Full FT, raw init
+CACHE = "phase2_leyu/dataset_cache_joint_independent"
+C2 = "results/persample/results_raw_persample.jsonl"                       
+C4 = "results/persample/fullft_joint_indep_TEST_persample.jsonl"    
 B = 10_000
 SEED = 0
 

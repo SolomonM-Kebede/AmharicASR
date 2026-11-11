@@ -5,68 +5,48 @@ data composition, split methodology, and LoRA config identical to Phase 2b,
 varying only the starting checkpoint (raw Whisper vs. Phase1_merged).
 """
 
-import os
-CUSTOM_CACHE = "~/AmharicASR/hf_cache"
-os.environ["HF_HOME"] = CUSTOM_CACHE
-os.environ["HF_DATASETS_CACHE"] = CUSTOM_CACHE
-os.environ["PYTORCH_ALLOC_CONF"] = "expandable_segments:True"
-os.environ["NVIDIA_TF32_OVERRIDE"] = "1"
+# Config sets the Hugging Face cache and offline flags. It must load before
+# transformers and datasets, so it comes first among the project imports.
+from common import config as cfg  # must load before transformers/datasets
 
 import io
-import random
-from collections import defaultdict
-from pathlib import Path
+import os
 from dataclasses import dataclass
 from typing import Any, Dict, List
 
+import librosa
 import numpy as np
 import pandas as pd
 import torch
-import librosa
-from datasets import load_dataset, load_from_disk, concatenate_datasets, Dataset as HFDataset, Audio
-from transformers import (
-    WhisperProcessor,
-    WhisperForConditionalGeneration,
-    Seq2SeqTrainingArguments,
-    Seq2SeqTrainer,
-    EarlyStoppingCallback,
+from datasets import (
+    Audio, Dataset as HFDataset, concatenate_datasets, load_dataset, load_from_disk,
 )
 from peft import LoraConfig, get_peft_model
+from transformers import (
+    EarlyStoppingCallback,
+    Seq2SeqTrainer,
+    Seq2SeqTrainingArguments,
+    WhisperForConditionalGeneration,
+    WhisperProcessor,
+)
 
+from data.normalize import normalize_amharic  # shared normalization
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
 
-# --- Paths ---
-BASE_DIR      = "~/AmharicASR/amharic_workspace"
-LEYU_CACHE = os.path.join(BASE_DIR, "phase2_leyu/dataset_cache_joint_independent")
+# Paths (from config; override with AMHARIC_* variables in env.amh.sh)
+BASE_DIR      = str(cfg.REPO_ROOT)
+LEYU_CACHE    = str(cfg.require(cfg.LEYU_JOINT_CACHE))
+LOCAL_CV_DIR  = str(cfg.require(cfg.CV_DIR))
+OUTPUT_DIR    = os.path.join(BASE_DIR, "single_phase_raw_whisper", "models", "joint_lora_run")
+MODEL_NAME    = cfg.WHISPER_MODEL
 ALFFA_DATASET = "hadamard-2/alffa-amharic"
-LOCAL_CV_DIR  = os.environ.get("LOCAL_CV_DIR", os.path.join(BASE_DIR, "cv-corpus-25.0-2026-03-09/am"))
-OUTPUT_DIR    = os.path.join(BASE_DIR, "single_phase_raw_whisper/models/joint_lora_run")
-MODEL_NAME    = "openai/whisper-large-v3"
 
 STANDARD_TO_DIALECT_RATIO = 1.0
-SEED = 42
+SEED = cfg.SEED
 EVAL_SUBSET_SIZE = int(os.environ.get("EVAL_SUBSET_SIZE", 800))
 
-# --- Normalization ---
-AMHARIC_CHAR_MAP = {
-    "ሐ": "ሀ", "ሑ": "ሁ", "ሒ": "ሂ", "ሓ": "ሃ", "ሔ": "ሄ", "ሕ": "ህ", "ሖ": "ሆ",
-    "ኀ": "ሀ", "ኁ": "ሁ", "ኂ": "ሂ", "ኃ": "ሃ", "ኄ": "ሄ", "ኅ": "ህ", "ኆ": "ሆ",
-    "ዐ": "አ", "ዑ": "ኡ", "ዒ": "ኢ", "ዓ": "ኣ", "ዔ": "ኤ", "ዕ": "እ", "ዖ": "ኦ",
-    "ሠ": "ሰ", "ሡ": "ሱ", "ሢ": "ሲ", "ሣ": "ሳ", "ሤ": "ሴ", "ሥ": "ስ", "ሦ": "ሶ",
-    "ፀ": "ጸ", "ፁ": "ጹ", "ፂ": "ጺ", "ፃ": "ጻ", "ፄ": "ጼ", "ፅ": "ጽ", "ፆ": "ጾ",
-}
-PUNCT = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~።፣፤፥፦'
-def normalize_amharic(text):
-    for src, tgt in AMHARIC_CHAR_MAP.items():
-        text = text.replace(src, tgt)
-    for p in PUNCT:
-        text = text.replace(p, " ")
-    return " ".join(text.split()).strip()
-
-# ---------------------------------------------------------
-# 1. LOAD & COMBINE DATA — before any CUDA context exists
-# ---------------------------------------------------------
+#  LOAD & COMBINE DATA — before any CUDA context exists
 print("Loading processor...")
 processor = WhisperProcessor.from_pretrained(MODEL_NAME, language="amharic", task="transcribe")
 DECODER_START_TOKEN_ID = processor.tokenizer.convert_tokens_to_ids("<|startoftranscript|>")
@@ -119,10 +99,6 @@ if cv_frames:
     mcv_hf = mcv_hf.cast_column("audio", Audio(sampling_rate=16_000, decode=False))
     print(f"  CV: {len(mcv_hf):,} examples, {cv_df['speaker_id'].nunique():,} speakers")
     
-    
-
-
-
     alffa_count = len(alffa)
     max_standard_allowed = int(leyu_count * STANDARD_TO_DIALECT_RATIO)
     mcv_quota = max(0, max_standard_allowed - alffa_count)
@@ -140,7 +116,7 @@ standard_combined = concatenate_datasets(standard_parts)
 print(f"\nTotal standard (ALFFA+CV): {len(standard_combined):,} examples")
 print(f"Leyu train                : {leyu_count:,} examples")
 
-# --- Combine: train = Leyu-train + standard; val/test = Leyu ONLY ---
+# Combine: train = Leyu-train + standard; val/test = Leyu ONLY 
 train_dataset = concatenate_datasets([leyu_train, standard_combined])
 print(f"Combined train: {len(train_dataset):,}  (val/test remain Leyu-only, unchanged)")
 
@@ -177,9 +153,8 @@ if 0 < EVAL_SUBSET_SIZE < len(val_dataset):
 else:
     train_time_eval_dataset = val_dataset
 
-# ---------------------------------------------------------
-# 2. LOAD MODEL — only now
-# ---------------------------------------------------------
+
+# LOAD MODEL — only now
 print(f"\nLoading {MODEL_NAME} into GPU...")
 model = WhisperForConditionalGeneration.from_pretrained(MODEL_NAME, torch_dtype=torch.bfloat16)
 model.config.use_cache = True

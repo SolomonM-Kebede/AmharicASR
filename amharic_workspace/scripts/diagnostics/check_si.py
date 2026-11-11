@@ -1,127 +1,179 @@
-import pandas as pd
-from datasets import load_from_disk
+"""Diagnostics for the Joint and SI splits, the Standard-Amharic pool, and the
+normalized text. Run from the workspace root after sourcing env.amh.sh.
 
-AMHARIC_CHAR_MAP = {
-    "ሐ": "ሀ", "ሑ": "ሁ", "ሒ": "ሂ", "ሓ": "ሃ", "ሔ": "ሄ", "ሕ": "ህ", "ሖ": "ሆ",
-    "ኀ": "ሀ", "ኁ": "ሁ", "ኂ": "ሂ", "ኃ": "ሃ", "ኄ": "ሄ", "ኅ": "ህ", "ኆ": "ሆ",
-    "ዐ": "አ", "ዑ": "ኡ", "ዒ": "ኢ", "ዓ": "ኣ", "ዔ": "ኤ", "ዕ": "እ", "ዖ": "ኦ",
-    "ሠ": "ሰ", "ሡ": "ሱ", "ሢ": "ሲ", "ሣ": "ሳ", "ሤ": "ሴ", "ሥ": "ስ", "ሦ": "ሶ",
-    "ፀ": "ጸ", "ፁ": "ጹ", "ፂ": "ጺ", "ፃ": "ጻ", "ፄ": "ጼ", "ፅ": "ጽ", "ፆ": "ጾ",
-}
-PUNCT = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~።፣፤፥፦'
-
-def normalize_amharic(text: str) -> str:
-    for src, tgt in AMHARIC_CHAR_MAP.items():
-        text = text.replace(src, tgt)
-    for p in PUNCT:
-        text = text.replace(p, " ")
-    return " ".join(text.split()).strip()
-
-JOINT = "phase2_leyu/dataset_cache_joint_independent"
-jt = {k: v.select_columns(["speaker_id", "dialect", "text", "norm_text"]).to_pandas()
-      for k, v in load_from_disk(JOINT).items()}
-tr, va, te = jt["train"], jt["validation"], jt["test"]
-
-# 0. Does the pasted function reproduce the cache's norm_text?
-print("normalizer matches cache norm_text (test):",
-      (te.text.map(normalize_amharic) == te.norm_text).mean())      # expect 1.0
-
-key = lambda s: s.str.replace("::", "_").str.replace(" ", "_")
-m = pd.read_parquet("leyu_meta_raw.parquet")
-m["key"] = key(m.speaker)
-m["dialect"] = m.speaker.str.rsplit("_", n=1).str[0]
-m["norm_text"] = m.text.map(normalize_amharic)
-
-# 1. Reconcile the 38,948 vs 38,292 difference
-print("parquet: utts", len(m), "| speakers", m.key.nunique())
-for name, df in (("val", va), ("test", te)):
-    ks = set(key(df.speaker_id))
-    print(name, "| utts in parquet for these speakers:", int(m.key.isin(ks).sum()),
-          "| utts in cache:", len(df))
-
-held = set(key(va.speaker_id)) | set(key(te.speaker_id))
-si_tr = m[~m.key.isin(held)]
-print("SI train = all non-held-out utts:", len(si_tr), "(chapter: 38,948)",
-      "| speakers:", si_tr.key.nunique())
-print("of these, speakers absent from Joint train:",
-      len(set(si_tr.key) - set(key(tr.speaker_id))))
-
-# 2. Text overlap with normalized text on both sides
-T = set(si_tr.norm_text)
-print("SI: share of test utts with text in train:", round(te.norm_text.isin(T).mean(), 3),
-      "(chapter ~0.96)")
-print("SI: share of distinct test texts in train:",
-      round(te.norm_text.drop_duplicates().isin(T).mean(), 3))
-print("Joint: share of test utts with text in train:",
-      te.norm_text.isin(set(tr.norm_text)).mean())
-
-# 3. Per-dialect table (SI vs Joint)
-t = pd.DataFrame({
-    "SI_speakers":    si_tr.groupby("dialect").key.nunique(),
-    "Joint_speakers": tr.groupby("dialect").speaker_id.nunique(),
-    "SI_train":       si_tr.groupby("dialect").size(),
-    "Joint_train":    tr.groupby("dialect").size(),
-})
-t["removed_pct"] = (1 - t.Joint_train / t.SI_train) * 100
-print(t.round(1))
-print(te.text.isin(set(m.text)).mean())   # ~1.0 means cache text = parquet text
+Each section prints the figure the thesis states in its comment, so a
+mismatch is visible at once.
+"""
+from common import config as cfg  # must load before transformers/datasets
 
 import collections
-pm = m.groupby("norm_text").text.first()
-s = te.drop_duplicates("norm_text").copy()
-s["pq_text"] = s.norm_text.map(pm)
-d = s[s.text != s.pq_text]
-print(len(d), "of", len(s), "distinct test texts differ")
-for _, r in d.head(5).iterrows():
-    print(repr(r.text[:70])); print(repr(r.pq_text[:70])); print()
-c1 = collections.Counter(ch for t in d.text for ch in t)
-c2 = collections.Counter(ch for t in d.pq_text for ch in t)
-print("more in cache:", [(ch, hex(ord(ch)), n) for ch, n in (c1 - c2).most_common(12)])
-print("more in parquet:", [(ch, hex(ord(ch)), n) for ch, n in (c2 - c1).most_common(12)])
-
-test_pq = m[m.key.isin(set(key(te.speaker_id)))]
-print("exact match :", round(test_pq.text.isin(set(si_tr.text)).mean(), 3))
-print("normalized  :", round(test_pq.norm_text.isin(set(si_tr.norm_text)).mean(), 3))  # expect 0.964
-
-print("raw       :", round(te.text.isin(set(va.text)).mean(), 3))
-print("normalized:", round(te.norm_text.isin(set(va.norm_text)).mean(), 3))   # 0.67
-print("parquet text == cache norm_text:", te.norm_text.isin(set(m.text)).mean())  # expect ~1.0
-
-raw = "".join(te.text) + "".join(va.text) + "".join(tr.text)
-print({hex(ord(c)): raw.count(c) for c in "\u1361\u1367\u1368"})
-
-print([hex(ord(c)) for c in PUNCT if ord(c) > 127])   # expect 0x1362 to 0x1366 only
-for ch in ("\u1361", "\u1367", "\u1368"):
-    print(hex(ord(ch)),
-          "in PUNCT:", ch in PUNCT,
-          "| survives:", ch in normalize_amharic("ቃል" + ch + "ቃል"),
-          "| in norm_text train/val/test:",
-          [int(df.norm_text.str.count(ch).sum()) for df in (tr, va, te)])
-
+import json
 import re
-marks = "\u1361\u1367\u1368"
-for n, df in (("train", tr), ("val", va), ("test", te)):
-    print(n, "utts with a mark: %.1f%%" % (df.norm_text.str.contains(f"[{marks}]").mean() * 100))
-t = " ".join(te.norm_text)
-print("test, U+1361 attached on both sides:", len(re.findall(r"\S\u1361\S", t)),
-      "| surrounded by spaces:", len(re.findall(r" \u1361 ", t)))
 
-import json, re, jiwer
-strip = lambda s: " ".join(re.sub(f"[{marks}]", " ", s).split())
-files = {
-  "C4 full FT joint": "results/persample/fullft_joint_indep_TEST_persample.jsonl",
-  "composition ablation": "results/persample/results_raw_persample.jsonl",
-  # add C1, C2, C3 and the A-run per-sample files here
+import pandas as pd
+from datasets import load_from_disk
+from transformers import WhisperTokenizer
+
+from common.bootstrap_utils import word_errors
+from data.normalize import normalize_amharic
+
+JOINT_CACHE = cfg.require(cfg.LEYU_JOINT_CACHE)
+STANDARD_CACHE = cfg.require(cfg.JOINT_STANDARD_CACHE)
+FULLFT_CACHE = cfg.require(cfg.DATA_DIR / "phase_fullft_joint_indep" / "dataset_cache")
+META_PATH = cfg.require(cfg.DATA_DIR / "leyu_meta_raw.parquet")
+
+MARKS = "\u1361\u1367\u1368"  # Ethiopic word separator and related marks
+
+PERSAMPLE = {
+    "C2 (LoRA, bf16)": cfg.PERSAMPLE / "results_raw_persample.jsonl",
+    "C4b (full FT, bf16)": cfg.PERSAMPLE / "c4b_bfloat16_persample.jsonl",
+    "C4 (full FT, fp16)": cfg.PERSAMPLE / "fullft_joint_indep_TEST_persample.jsonl",
 }
-REF_KEYS = ["reference", "ref", "norm_ref", "target", "gold", "label"]
-HYP_KEYS = ["prediction", "pred", "norm_pred", "hypothesis", "hyp"]
-for name, path in files.items():
-    rows = [json.loads(l) for l in open(path)]
-    k = rows[0].keys()
-    R = next((x for x in REF_KEYS if x in k), None); H = next((x for x in HYP_KEYS if x in k), None)
-    print(name, "| keys:", list(k), "| using:", R, H)
-    if not (R and H): continue
-    refs, hyps = [r[R] for r in rows], [r[H] for r in rows]
-    a = jiwer.wer(refs, hyps) * 100
-    b = jiwer.wer([strip(x) for x in refs], [strip(x) for x in hyps]) * 100
-    print(f"   WER as reported {a:.2f} | marks removed {b:.2f} | diff {b - a:+.2f}")
+
+
+def speaker_key(s):
+    """The cache and the metadata write speaker IDs differently. Map both to one form."""
+    return s.str.replace("::", "_", regex=False).str.replace(" ", "_", regex=False)
+
+
+def strip_marks(text):
+    return " ".join(re.sub(f"[{MARKS}]", " ", text).split())
+
+
+def corpus_wer(refs, hyps):
+    """Corpus WER with the same word counting as the bootstrap."""
+    errors = words = 0
+    for r, h in zip(refs, hyps):
+        e, n = word_errors(r, h)
+        errors += e
+        words += n
+    return 100.0 * errors / words
+
+
+# ── Load the Joint split ─────────────────────────────────────────────────────
+jt = {k: v.select_columns(["speaker_id", "dialect", "text", "norm_text"]).to_pandas()
+      for k, v in load_from_disk(str(JOINT_CACHE)).items()}
+tr, va, te = jt["train"], jt["validation"], jt["test"]
+
+# ── 0. The shared normalizer reproduces the cached text (expect 1.0) ─────────
+agree = (te.text.map(normalize_amharic) == te.norm_text.str.strip()).mean()
+print(f"0. normalizer agrees with cached norm_text on test: {agree:.4f}")
+
+# ── 1. Joint split: independence and overlap ─────────────────────────────────
+print("\n1. Joint split")
+print("   utterances  train/val/test:", len(tr), len(va), len(te))
+print("   speakers    train/val/test:",
+      tr.speaker_id.nunique(), va.speaker_id.nunique(), te.speaker_id.nunique())
+print("   speaker overlap  train&test:", len(set(tr.speaker_id) & set(te.speaker_id)),
+      "| train&val:", len(set(tr.speaker_id) & set(va.speaker_id)))
+
+T_tr, T_va, T_te = set(tr.norm_text), set(va.norm_text), set(te.norm_text)
+print("   text overlap     train&test:", len(T_tr & T_te),
+      "| train&val:", len(T_tr & T_va))
+print("   validation & test shared prompts:", len(T_va & T_te), "(thesis: 2,005)")
+print("   test utterances with text in validation: %.3f (thesis: 0.67)"
+      % te.norm_text.isin(T_va).mean())
+
+# ── 2. SI split rebuilt from the metadata ────────────────────────────────────
+meta = pd.read_parquet(META_PATH)
+meta["key"] = speaker_key(meta.speaker)
+meta["dialect"] = meta.key.str.rsplit("_", n=1).str[0].str.replace("_", " ")
+meta["norm_text"] = meta.text.map(normalize_amharic)
+
+held_out = set(speaker_key(va.speaker_id)) | set(speaker_key(te.speaker_id))
+si_train = meta[~meta.key.isin(held_out)]
+
+print("\n2. SI split")
+print(f"   SI train utterances: {len(si_train):,} (thesis: 38,948)"
+      f" | speakers: {si_train.key.nunique()}")
+print("   speakers in SI train but absent from Joint train:",
+      len(set(si_train.key) - set(speaker_key(tr.speaker_id))))
+
+T_si = set(si_train.norm_text)
+print("   test utterances, normalized text in SI train: %.3f (thesis: 0.964)"
+      % te.norm_text.isin(T_si).mean())
+print("   distinct test texts, in SI train: %.3f"
+      % te.norm_text.drop_duplicates().isin(T_si).mean())
+print("   test utterances, raw text in SI train: %.3f"
+      % te.text.isin(set(si_train.text)).mean())
+print("   test utterances, text in Joint train: %.3f (should be 0)"
+      % te.norm_text.isin(T_tr).mean())
+
+# ── 3. Per-dialect training counts, SI vs Joint (thesis: dialect table) ──────
+print("\n3. Per-dialect training counts")
+table = pd.DataFrame({
+    "SI_speakers": si_train.groupby("dialect").key.nunique(),
+    "Joint_speakers": tr.groupby("dialect").speaker_id.nunique(),
+    "SI_train": si_train.groupby("dialect").size(),
+    "Joint_train": tr.groupby("dialect").size(),
+})
+table["removed_pct"] = 100 * (1 - table.Joint_train / table.SI_train)
+print(table.round(1).to_string())
+
+# ── 4. Cache text vs metadata text ───────────────────────────────────────────
+print("\n4. Cache text vs metadata text")
+print("   test utterances whose raw text occurs in metadata: %.3f"
+      % te.text.isin(set(meta.text)).mean())
+
+pm = meta.groupby("norm_text").text.first()
+distinct = te.drop_duplicates("norm_text")[["norm_text", "text"]].copy()
+distinct["meta_text"] = distinct.norm_text.map(pm)
+not_found = int(distinct.meta_text.isna().sum())
+found = distinct.dropna(subset=["meta_text"])
+differ = found[found.text != found.meta_text]
+print(f"   distinct test texts: {len(distinct)} | not found in metadata: {not_found}"
+      f" | raw text differs: {len(differ)}")
+for _, row in differ.head(3).iterrows():
+    print("     cache   :", repr(row.text[:70]))
+    print("     metadata:", repr(row.meta_text[:70]))
+
+c_cache = collections.Counter(ch for t in differ.text for ch in t)
+c_meta = collections.Counter(ch for t in differ.meta_text for ch in t)
+print("   more frequent in cache   :",
+      [hex(ord(ch)) for ch, _ in (c_cache - c_meta).most_common(8)])
+print("   more frequent in metadata:",
+      [hex(ord(ch)) for ch, _ in (c_meta - c_cache).most_common(8)])
+
+# ── 5. Ethiopic word separator and WER with marks removed ────────────────────
+print("\n5. Ethiopic marks")
+for ch in MARKS:
+    survives = ch in normalize_amharic("ቃል" + ch + "ቃል")
+    counts = [int(df.norm_text.str.count(ch).sum()) for df in (tr, va, te)]
+    print(f"   {hex(ord(ch))} survives normalizer: {survives}"
+          f" | count in norm_text train/val/test: {counts}")
+for name, df in (("train", tr), ("val", va), ("test", te)):
+    share = df.norm_text.str.contains(f"[{MARKS}]").mean()
+    print(f"   {name}: utterances containing a mark: {100 * share:.1f}%")
+
+for label, path in PERSAMPLE.items():
+    with open(path, encoding="utf-8") as f:
+        rows = [json.loads(line) for line in f]
+    refs = [r["reference"] for r in rows]
+    hyps = [r["prediction"] for r in rows]
+    as_reported = corpus_wer(refs, hyps)
+    stripped = corpus_wer([strip_marks(r) for r in refs], [strip_marks(h) for h in hyps])
+    print(f"   {label}: as reported {as_reported:.2f} | marks removed {stripped:.2f}"
+          f" | difference {stripped - as_reported:+.2f}")
+
+# ── 6. Standard-Amharic pool ─────────────────────────────────────────────────
+print("\n6. Standard-Amharic pool")
+std = load_from_disk(str(STANDARD_CACHE))
+sm = std.select_columns(["utterance_id", "speaker_id", "split", "dialect"]).to_pandas()
+print(f"   utterances: {len(sm):,} (thesis: 11,428) | speakers: {sm.speaker_id.nunique():,}")
+print("   split:", sm.split.value_counts(dropna=False).to_dict())
+print("   dialect:", sm.dialect.value_counts(dropna=False).to_dict())
+print("   missing values:", sm.isna().sum().to_dict())
+
+tok = WhisperTokenizer.from_pretrained(cfg.WHISPER_MODEL, language="amharic", task="transcribe")
+labels = std.select_columns(["labels"])["labels"]
+std_text = [normalize_amharic(tok.decode([i for i in x if i >= 0], skip_special_tokens=True))
+            for x in labels]
+held_text = T_va | T_te
+print("   Standard utterances whose normalized text occurs in Leyu validation or test:",
+      sum(t in held_text for t in std_text), "(expect 0)")
+
+# ── 7. Full fine-tuning training set ─────────────────────────────────────────
+print("\n7. Full fine-tuning training set")
+ft = load_from_disk(str(FULLFT_CACHE))["train"].select_columns(["dialect"]).to_pandas()
+print(f"   utterances: {len(ft):,} (thesis: 20,592)")
+print(ft.dialect.value_counts().to_string())

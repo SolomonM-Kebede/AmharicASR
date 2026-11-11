@@ -1,4 +1,6 @@
+from data.normalize import normalize_amharic
 import json, sys
+from common import config as cfg  # must load before transformers/datasets
 import evaluate
 
 CHAR_MAP = {

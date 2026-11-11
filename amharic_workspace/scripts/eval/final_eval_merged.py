@@ -1,3 +1,4 @@
+from data.normalize import normalize_amharic
 """
 Amharic ASR — RQ2 final eval of the MERGED checkpoint (phase2b_clean_merged_fp32),
 generation_config now mutated IN PLACE on both models (root cause of the earlier
@@ -26,6 +27,7 @@ import json
 from dataclasses import dataclass
 from typing import Any, Dict, List
 
+from common import config as cfg  # must load before transformers/datasets
 import torch
 from datasets import load_from_disk
 from transformers import (

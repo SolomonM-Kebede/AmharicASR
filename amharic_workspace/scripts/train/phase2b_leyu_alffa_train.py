@@ -1,3 +1,4 @@
+
 """
 Amharic ASR — RQ2: Joint Leyu + ALFFA + Common Voice Training
 ================================================================================
@@ -16,16 +17,18 @@ os.environ["HF_HUB_CACHE"] = CUSTOM_CACHE
 os.environ["HF_MODULES_CACHE"] = CUSTOM_CACHE
 os.environ["HF_METRICS_CACHE"] = CUSTOM_CACHE
 os.environ["HF_EVALUATE_CACHE"] = CUSTOM_CACHE
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"  # add at the very top
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"  
 
 import io
 import json
 import pandas as pd
 import numpy as np
+from common import config as cfg  
 import torch
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
+from data.normalize import normalize_amharic
 
 from datasets import (
     load_dataset, concatenate_datasets, Audio, load_from_disk, Dataset as HFDataset,
@@ -42,7 +45,7 @@ if torch.cuda.device_count() == 0:
     raise RuntimeError("No GPU found — aborting.")
 print(f"GPU    : {torch.cuda.get_device_name(0)}")
 
-# ─── Hyperparameters (Held constant from Phase 2) ───────────────────────────
+# Hyperparameters (Held constant from Phase 2) 
 LORA_R           = int(os.environ.get("LORA_R", 64))
 LORA_ALPHA       = int(os.environ.get("LORA_ALPHA", 128))
 LORA_DROPOUT     = float(os.environ.get("LORA_DROPOUT", 0.09))
@@ -56,52 +59,37 @@ MAX_TEXT_CHARS   = 350
 EVAL_SUBSET_SIZE = int(os.environ.get("EVAL_SUBSET_SIZE", 800))
 RESUME_FROM_CHECKPOINT = os.environ.get("RESUME_FROM_CHECKPOINT", "true").lower() == "true"
 
-# ─── Dataset Ratios & Paths ─────────────────────────────────────────────────
+# Dataset Ratios & Paths 
 STANDARD_RATIO = float(os.environ.get("STANDARD_RATIO", 1.0))
 MIX_SEED       = 42
 
-BASE_DIR      = "~/AmharicASR/amharic_workspace"
-PHASE1_MERGED = os.path.join(BASE_DIR, "phase1_curriculum/models/phase1_best_model_merged")
-LEYU_CACHE    = os.path.join(BASE_DIR, "phase2_leyu/dataset_cache_2026-08-expanded-spkindep")
-LOCAL_CV_DIR  = os.path.join(BASE_DIR, "cv-corpus-25.0-2026-03-09/am")
+BASE_DIR          = cfg.REPO_ROOT
+MODEL_NAME        = cfg.WHISPER_MODEL
+LOCAL_CV_DIR      = cfg.CV_DIR
+JOINT_INDEP_CACHE = cfg.require(cfg.LEYU_JOINT_CACHE)
+cfg.require(LOCAL_CV_DIR)
 
-PHASE2B_DIR   = os.path.join(BASE_DIR, "phase2b_leyu_standard")
-OUTPUT_DIR    = os.path.join(PHASE2B_DIR, "models")
-RESULTS_DIR   = os.path.join(PHASE2B_DIR, "results")
-STANDARD_CACHE = os.path.join(PHASE2B_DIR, f"standard_speech_cache_ratio{STANDARD_RATIO}")
+
+PHASE2B_DIR   = BASE_DIR/ "phase2b_leyu_standard"
+OUTPUT_DIR    = PHASE2B_DIR/ "models"
+RESULTS_DIR   = PHASE2B_DIR/ "results"
+STANDARD_CACHE = PHASE2B_DIR/ f"standard_speech_cache_ratio{STANDARD_RATIO}"
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(RESULTS_DIR, exist_ok=True)
-
-# ─── Normalization ──────────────────────────────────────────────────────────
-AMHARIC_CHAR_MAP = {
-    "ሐ": "ሀ", "ሑ": "ሁ", "ሒ": "ሂ", "ሓ": "ሃ", "ሔ": "ሄ", "ሕ": "ህ", "ሖ": "ሆ",
-    "ኀ": "ሀ", "ኁ": "ሁ", "ኂ": "ሂ", "ኃ": "ሃ", "ኄ": "ሄ", "ኅ": "ህ", "ኆ": "ሆ",
-    "ዐ": "አ", "ዑ": "ኡ", "ዒ": "ኢ", "ዓ": "ኣ", "ዔ": "ኤ", "ዕ": "እ", "ዖ": "ኦ",
-    "ሠ": "ሰ", "ሡ": "ሱ", "ሢ": "ሲ", "ሣ": "ሳ", "ሤ": "ሴ", "ሥ": "ስ", "ሦ": "ሶ",
-    "ፀ": "ጸ", "ፁ": "ጹ", "ፂ": "ጺ", "ፃ": "ጻ", "ፄ": "ጼ", "ፅ": "ጽ", "ፆ": "ጾ",
-}
-PUNCT = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~።፣፤፥፦'
-
-def normalize_amharic(text: str) -> str:
-    for src, tgt in AMHARIC_CHAR_MAP.items():
-        text = text.replace(src, tgt)
-    for p in PUNCT:
-        text = text.replace(p, " ")
-    return " ".join(text.split()).strip()
 
 print(f"\nLoading processor from {PHASE1_MERGED} ...")
 processor = WhisperProcessor.from_pretrained(PHASE1_MERGED, language="amharic", task="transcribe")
 DECODER_START_TOKEN_ID = processor.tokenizer.convert_tokens_to_ids("<|startoftranscript|>")
 
-# ─── 1. Load Leyu (Unchanged) ───────────────────────────────────────────────
+# Load Leyu  
 print(f"\nLoading existing Leyu splits from {LEYU_CACHE} ...")
 leyu_cached = load_from_disk(LEYU_CACHE)
 leyu_train  = leyu_cached["train"]
 leyu_val    = leyu_cached["validation"]
 leyu_test   = leyu_cached["test"]
 
-# ─── 2. Prepare Standard Speech (ALFFA + CV) ────────────────────────────────
+# Prepare Standard Speech (ALFFA + CV) 
 if Path(STANDARD_CACHE).exists():
     print(f"\nStandard Cache found — loading from {STANDARD_CACHE}")
     standard_train = load_from_disk(STANDARD_CACHE)
@@ -135,7 +123,7 @@ else:
     cv_raw = HFDataset.from_dict(cv_df.to_dict("list"))
     cv_raw = cv_raw.cast_column("audio", Audio(sampling_rate=16_000, decode=False))
     
-    # ─── Corrected Sampling: Keep curated ALFFA, fill remainder with CV ─────
+    # Corrected Sampling: Keep curated ALFFA, fill remainder with CV 
     target_standard_n = int(len(leyu_train) * STANDARD_RATIO)
     
     alffa_take = min(len(alffa_raw), target_standard_n)
@@ -182,7 +170,7 @@ else:
     standard_train.save_to_disk(STANDARD_CACHE)
     print(f"  Saved standard cache to {STANDARD_CACHE}")
 
-# ─── 3. Final Combine ───────────────────────────────────────────────────────
+# Final Combine 
 train_dataset = concatenate_datasets([leyu_train, standard_train]).shuffle(seed=42)
 
 print(f"\nFinal Train Set: {len(train_dataset):,} (Leyu: {len(leyu_train):,} + Standard: {len(standard_train):,})")
@@ -238,7 +226,7 @@ class SafeWhisperTrainer(Seq2SeqTrainer):
             inputs["input_features"] = inputs["input_features"].to(dtype=next(model.parameters()).dtype)
         return super().prediction_step(model, inputs, prediction_loss_only, ignore_keys)
 
-# ─── 4. Training ────────────────────────────────────────────────────────────
+# Training 
 print(f"\nLoading base model from {PHASE1_MERGED} ...")
 model = WhisperForConditionalGeneration.from_pretrained(
     PHASE1_MERGED,
@@ -302,7 +290,7 @@ if resume_arg and get_last_checkpoint(OUTPUT_DIR) is None:
 print("\nStarting Phase 2b Joint Training...")
 trainer.train(resume_from_checkpoint=resume_arg)
 
-# ─── 5. Save & Merge ────────────────────────────────────────────────────────
+# 5. Save & Merge 
 ADAPTER_DIR = os.path.join(OUTPUT_DIR, "phase2b_lora_adapter")
 MERGED_DIR  = os.path.join(OUTPUT_DIR, "phase2b_final_merged")
 trainer.model.save_pretrained(ADAPTER_DIR)
@@ -311,7 +299,7 @@ merged = trainer.model.cpu().merge_and_unload()
 merged.save_pretrained(MERGED_DIR)
 processor.save_pretrained(MERGED_DIR)
 
-# ─── 6. H200-Optimized Final Evaluation ─────────────────────────────────────
+# H200-Optimized Final Evaluation 
 print("\nRunning FINAL evaluation on Leyu-only test set...")
 eval_model = WhisperForConditionalGeneration.from_pretrained(
     MERGED_DIR, torch_dtype=torch.bfloat16, attn_implementation="sdpa"
@@ -338,18 +326,18 @@ for d_name in DIALECT_NAMES:
     if len(d_test) == 0: continue
     result = eval_trainer.predict(d_test)
     
-    # 1. Safely filter predictions
+    # Safely filter predictions
     p_ids = result.predictions
     if isinstance(p_ids, tuple):  # Catch edge cases where predictions return a tuple
         p_ids = p_ids[0]
     p_ids = p_ids.copy()
     p_ids[p_ids == -100] = processor.tokenizer.pad_token_id
     
-    # 2. Safely filter labels
+    # Safely filter labels
     l_ids = result.label_ids.copy()
     l_ids[l_ids == -100] = processor.tokenizer.pad_token_id
     
-    # 3. Decode
+    # Decode
     p_str = [normalize_amharic(s) for s in processor.tokenizer.batch_decode(p_ids, skip_special_tokens=True)]
     l_str = [normalize_amharic(s) for s in processor.tokenizer.batch_decode(l_ids, skip_special_tokens=True)]
     

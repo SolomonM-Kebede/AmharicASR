@@ -1,3 +1,4 @@
+from common import config as cfg  # must load before transformers/datasets
 from datasets import load_from_disk
 from transformers import WhisperTokenizer
 tok = WhisperTokenizer.from_pretrained("openai/whisper-large-v3")

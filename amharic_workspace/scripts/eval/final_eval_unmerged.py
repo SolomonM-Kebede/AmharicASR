@@ -1,3 +1,4 @@
+from data.normalize import normalize_amharic
 """
 Amharic ASR — RQ2 final eval WITHOUT merging (merge_and_unload is broken
 for this adapter, root cause not yet confirmed — see diagnostic results)
@@ -27,6 +28,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
 
+from common import config as cfg  # must load before transformers/datasets
 import torch
 from datasets import load_from_disk
 from transformers import (

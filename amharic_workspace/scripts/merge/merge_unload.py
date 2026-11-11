@@ -1,3 +1,4 @@
+
 """
 Amharic ASR — Fix the merge (fp32) and run the REAL final RQ2 evaluation
 ============================================================================
@@ -12,21 +13,13 @@ subsample) with the established winning decode config (beam=5, no penalty).
 
 import os
 
-CUSTOM_CACHE = os.environ.get("STT_CACHE_DIR", os.path.expanduser("~/AmharicASR/clean_cache"))
-os.makedirs(CUSTOM_CACHE, exist_ok=True)
-os.environ["HF_HOME"] = CUSTOM_CACHE
-os.environ["HF_DATASETS_CACHE"] = CUSTOM_CACHE
-os.environ["HF_HUB_CACHE"] = CUSTOM_CACHE
-os.environ["HF_MODULES_CACHE"] = CUSTOM_CACHE
-os.environ["HF_METRICS_CACHE"] = CUSTOM_CACHE
-os.environ["HF_EVALUATE_CACHE"] = CUSTOM_CACHE
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
 
+from common import config as cfg  # must load before transformers/datasets
 import torch
 from datasets import load_from_disk
 from transformers import (
@@ -34,42 +27,26 @@ from transformers import (
     Seq2SeqTrainingArguments, Seq2SeqTrainer, GenerationConfig,
 )
 from peft import PeftModel
+from data.normalize import normalize_amharic
 
 print(f"torch  : {torch.__version__}")
 if not torch.cuda.is_available():
     raise RuntimeError("No GPU found — aborting.")
 print(f"GPU    : {torch.cuda.get_device_name(0)}")
 
-BASE_DIR      = "~/AmharicASR/amharic_workspace"
-PHASE1_MERGED = os.path.join(BASE_DIR, "phase1_curriculum/models/phase1_best_model_merged")
-PHASE2B_DIR   = os.path.join(BASE_DIR, "phase2b_leyu_standard")
-ADAPTER_DIR   = os.path.join(PHASE2B_DIR, "models", "phase2b_lora_adapter")
-FIXED_MERGED_DIR = os.path.join(PHASE2B_DIR, "models", "phase2b_final_merged_fp32fix")
-LEYU_CACHE    = os.path.join(BASE_DIR, "phase2_leyu/dataset_cache_2026-08-expanded-spkindep")
-RESULTS_DIR   = os.path.join(PHASE2B_DIR, "results")
+BASE_DIR      = str(cfg.REPO_ROOT)
+PHASE1_MERGED = str(cfg.PHASE1_MERGED)
+PHASE2B_DIR   = BASE_DIR/ "phase2b_leyu_standard"
+ADAPTER_DIR   = PHASE2B_DIR/ "models", "phase2b_lora_adapter"
+FIXED_MERGED_DIR = PHASE2B_DIR/ "models", "phase2b_final_merged_fp32fix"
+LEYU_CACHE    = BASE_DIR/ "phase2_leyu/dataset_cache_2026-08-expanded-spkindep"
+RESULTS_DIR   = PHASE2B_DIR/ "results"
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 EVAL_BATCH_SIZE = int(os.environ.get("EVAL_BATCH_SIZE", 8))
 NUM_BEAMS       = int(os.environ.get("NUM_BEAMS", 5))
 
 DIALECT_NAMES = ["gojjam", "gonder", "wello", "shewa", "addis ababa"]
-
-AMHARIC_CHAR_MAP = {
-    "ሐ": "ሀ", "ሑ": "ሁ", "ሒ": "ሂ", "ሓ": "ሃ", "ሔ": "ሄ", "ሕ": "ህ", "ሖ": "ሆ",
-    "ኀ": "ሀ", "ኁ": "ሁ", "ኂ": "ሂ", "ኃ": "ሃ", "ኄ": "ሄ", "ኅ": "ህ", "ኆ": "ሆ",
-    "ዐ": "አ", "ዑ": "ኡ", "ዒ": "ኢ", "ዓ": "ኣ", "ዔ": "ኤ", "ዕ": "እ", "ዖ": "ኦ",
-    "ሠ": "ሰ", "ሡ": "ሱ", "ሢ": "ሲ", "ሣ": "ሳ", "ሤ": "ሴ", "ሥ": "ስ", "ሦ": "ሶ",
-    "ፀ": "ጸ", "ፁ": "ጹ", "ፂ": "ጺ", "ፃ": "ጻ", "ፄ": "ጼ", "ፅ": "ጽ", "ፆ": "ጾ",
-}
-PUNCT = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~።፣፤፥፦'
-
-def normalize_amharic(text: str) -> str:
-    for src, tgt in AMHARIC_CHAR_MAP.items():
-        text = text.replace(src, tgt)
-    for p in PUNCT:
-        text = text.replace(p, " ")
-    return " ".join(text.split()).strip()
-
 
 print(f"\nLoading processor from {PHASE1_MERGED} ...")
 processor = WhisperProcessor.from_pretrained(PHASE1_MERGED, language="amharic", task="transcribe")

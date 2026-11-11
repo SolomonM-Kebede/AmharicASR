@@ -18,10 +18,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
 import io
-from normalize import normalize_amharic
+from data.normalize import normalize_amharic
 
 import numpy as np
 import pandas as pd
+from common import config as cfg  
 import torch
 import librosa
 from datasets import (
@@ -39,14 +40,15 @@ if not torch.cuda.is_available():
 print(f"GPU    : {torch.cuda.get_device_name(0)}")
 print(f"VRAM   : {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
 
-BASE_DIR = "/AmharicASR/amharic_workspace"
-MODEL_NAME = "openai/whisper-large-v3"
-LOCAL_CV_DIR = os.path.join(BASE_DIR, "cv-corpus-25.0-2026-03-09/am")
-JOINT_INDEP_CACHE = os.path.join(BASE_DIR, "phase2_leyu/dataset_cache_joint_independent")
+BASE_DIR          = cfg.REPO_ROOT
+MODEL_NAME        = cfg.WHISPER_MODEL
+LOCAL_CV_DIR      = cfg.CV_DIR
+JOINT_INDEP_CACHE = cfg.require(cfg.LEYU_JOINT_CACHE)
+cfg.require(LOCAL_CV_DIR)
 
-PHASE_DIR   = os.path.join(BASE_DIR, "phase_fullft_joint_indep")
-OUTPUT_DIR  = os.path.join(PHASE_DIR, "models")
-DATA_CACHE  = os.path.join(PHASE_DIR, "dataset_cache")
+PHASE_DIR   = BASE_DIR/ "phase_fullft_joint_indep"
+OUTPUT_DIR  = PHASE_DIR/ "models"
+DATA_CACHE  = PHASE_DIR/ "dataset_cache"
 RESULTS_DIR = os.path.join(PHASE_DIR, "results")
 for d in [OUTPUT_DIR, DATA_CACHE, RESULTS_DIR]:
     os.makedirs(d, exist_ok=True)
@@ -68,22 +70,6 @@ EVAL_STEPS      = 200
 EARLY_STOPPING_PATIENCE = 5
 LABEL_SMOOTHING = 0.1
 RESUME_FROM_CHECKPOINT = os.environ.get("RESUME_FROM_CHECKPOINT", "true").lower() == "true"
-
-# AMHARIC_CHAR_MAP = {
-#     "ሐ": "ሀ", "ሑ": "ሁ", "ሒ": "ሂ", "ሓ": "ሃ", "ሔ": "ሄ", "ሕ": "ህ", "ሖ": "ሆ",
-#     "ኀ": "ሀ", "ኁ": "ሁ", "ኂ": "ሂ", "ኃ": "ሃ", "ኄ": "ሄ", "ኅ": "ህ", "ኆ": "ሆ",
-#     "ዐ": "አ", "ዑ": "ኡ", "ዒ": "ኢ", "ዓ": "ኣ", "ዔ": "ኤ", "ዕ": "እ", "ዖ": "ኦ",
-#     "ሠ": "ሰ", "ሡ": "ሱ", "ሢ": "ሲ", "ሣ": "ሳ", "ሤ": "ሴ", "ሥ": "ስ", "ሦ": "ሶ",
-#     "ፀ": "ጸ", "ፁ": "ጹ", "ፂ": "ጺ", "ፃ": "ጻ", "ፄ": "ጼ", "ፅ": "ጽ", "ፆ": "ጾ",
-# }
-# PUNCT = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~።፣፤፥፦'
-
-# def normalize_amharic(text: str) -> str:
-#     for src, tgt in AMHARIC_CHAR_MAP.items():
-#         text = text.replace(src, tgt)
-#     for p in PUNCT:
-#         text = text.replace(p, " ")
-#     return " ".join(text.split()).strip()
 
 
 print(f"\nLoading processor from {MODEL_NAME} ...")

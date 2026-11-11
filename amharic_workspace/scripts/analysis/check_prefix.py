@@ -1,27 +1,9 @@
-# import json
 
-# MANIFEST = "/home/stud_homes/s8345520/AmharicASR/amharic_workspace/test_set_audio_export/manifest.jsonl"  # your manifest path
-# PERSAMPLE = "/home/stud_homes/s8345520/AmharicASR/amharic_workspace/eval_controls/c4b_bfloat16_persample.jsonl"
-
-# rows = [json.loads(l) for l in open(MANIFEST, encoding="utf-8")]
-# pers = [json.loads(l) for l in open(PERSAMPLE, encoding="utf-8")]
-# subset_idx = {int(l) for l in open("splits/subset_688_idx.txt", encoding="utf-8") if l.strip()}
-
-# def full(p): return rows[p["orig_idx"]]["reference"].strip()
-# def short(p): return p["reference"].strip()
-
-# all_prefix = sum(full(p).startswith(short(p)) for p in pers)
-# all_exact = sum(full(p) == short(p) for p in pers)
-# sub = [p for p in pers if p["orig_idx"] in subset_idx]
-# sub_exact = sum(full(p) == short(p) for p in sub)
-# sub_prefix = sum(full(p).startswith(short(p)) for p in sub)
-
-# print("all: exact", all_exact, "prefix", all_prefix, "of", len(pers))
-# print("subset: exact", sub_exact, "prefix", sub_prefix, "of", len(sub))
 
 import json
+from common import config as cfg  # must load before transformers/datasets
 from datasets import load_from_disk
-from normalize import normalize_amharic   # replace normalize_module
+from data.normalize import normalize_amharic
 
 
 X = {}

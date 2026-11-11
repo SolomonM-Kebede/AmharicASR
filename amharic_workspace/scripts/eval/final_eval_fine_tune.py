@@ -1,3 +1,4 @@
+from data.normalize import normalize_amharic
 """
 Standalone Phase 3 Final Evaluation
 Forces strict offline mode to prevent Hugging Face network deadlocks.
@@ -17,6 +18,7 @@ os.environ["HF_MODULES_CACHE"] = CUSTOM_CACHE
 os.environ["HF_METRICS_CACHE"] = CUSTOM_CACHE
 
 import json
+from common import config as cfg  # must load before transformers/datasets
 import torch
 from datasets import load_from_disk
 from transformers import (

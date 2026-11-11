@@ -1,25 +1,3 @@
-# import json
-
-# MANIFEST = "/home/stud_homes/s8345520/AmharicASR/amharic_workspace/test_set_audio_export/manifest.jsonl"
-# PERSAMPLE = "/home/stud_homes/s8345520/AmharicASR/amharic_workspace/eval_controls/c4b_bfloat16_persample.jsonl"
-
-# rows = [json.loads(l) for l in open(MANIFEST, encoding="utf-8")]
-# pers = [json.loads(l) for l in open(PERSAMPLE, encoding="utf-8")]
-
-# shown = 0
-# for p in pers:
-#     full = rows[p["orig_idx"]]["reference"].strip()
-#     short = p["reference"].strip()
-#     if full.startswith(short):
-#         continue
-#     k = next((i for i, (a, b) in enumerate(zip(full, short)) if a != b), min(len(full), len(short)))
-#     print("orig_idx", p["orig_idx"], "| first difference at char", k)
-#     print("  manifest:", repr(full[max(0, k-30):k+30]))
-#     print("  persample:", repr(short[max(0, k-30):k+30]))
-#     print("  lengths: manifest", len(full), "persample", len(short))
-#     shown += 1
-#     if shown == 4:
-#         break
 
 import json, jiwer
 

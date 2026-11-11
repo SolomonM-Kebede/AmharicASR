@@ -1,67 +1,69 @@
-import os
+"""Merge equivalence test for the Phase 2 LoRA adapter. No training.
+
+Checks three things on a fixed random input:
+  1. The merged weights equal base + delta for one attention projection.
+  2. The merged model's logits match the unmerged LoRA model's logits.
+  3. The tied decoder embedding and output projection share storage, before
+     and after the merge.
+
+Runs in float32 on purpose: the test is about exact equivalence, and bfloat16
+would add rounding noise that hides a real difference.
+Run from the workspace root after sourcing env.amh.sh.
+"""
+from common import config as cfg  # must load before transformers/datasets
+
 import torch
-from transformers import WhisperForConditionalGeneration
 from peft import PeftModel
+from transformers import WhisperForConditionalGeneration, WhisperProcessor
 
-BASE_DIR = "/amharic_workspace"
-PHASE1_MERGED = os.path.join(BASE_DIR, "phase1_curriculum/models/phase1_best_model_merged")
-ADAPTER_DIR = os.path.join(BASE_DIR, "phase2b_leyu_standard/models/phase2b_lora_adapter")
+TOLERANCE = 1e-4
 
-print("1. Loading unmerged model in pure FP32...")
-base_model = WhisperForConditionalGeneration.from_pretrained(PHASE1_MERGED, torch_dtype=torch.float32)
-peft_model = PeftModel.from_pretrained(base_model, ADAPTER_DIR).eval()
+PHASE1_MERGED = cfg.require(cfg.PHASE1_MERGED)
+ADAPTER_DIR = cfg.require(cfg.DATA_DIR / "phase2b_leyu_standard" / "models" / "phase2b_lora_adapter")
 
-# ─── TEST A: THE TIED EMBEDDINGS POINTER TEST (BEFORE MERGE) ───
-decoder_embed_ptr_unmerged = peft_model.base_model.model.model.decoder.embed_tokens.weight.data_ptr()
-lm_head_ptr_unmerged = peft_model.base_model.model.proj_out.weight.data_ptr()
-print(f"\n[Unmerged] Decoder Embeddings Pointer: {decoder_embed_ptr_unmerged}")
-print(f"[Unmerged] LM Head Output Pointer:     {lm_head_ptr_unmerged}")
-print(f"Are they tied? {decoder_embed_ptr_unmerged == lm_head_ptr_unmerged}")
+processor = WhisperProcessor.from_pretrained(str(PHASE1_MERGED), language="amharic", task="transcribe")
+prefix = processor.get_decoder_prompt_ids(language="amharic", task="transcribe", no_timestamps=True)
+decoder_start = processor.tokenizer.convert_tokens_to_ids("<|startoftranscript|>")
+# Prefix as (position, token) pairs; the decoder input starts with the start token.
+decoder_ids = torch.tensor([[decoder_start] + [tok for _, tok in prefix]], dtype=torch.long)
+print("decoder input ids:", decoder_ids.tolist())
 
-# Create deterministic dummy input
-torch.manual_seed(42)
-dummy_audio = torch.randn(1, 128, 3000, dtype=torch.float32)
-dummy_decoder_ids = torch.tensor([[50258, 50259, 50359]], dtype=torch.long) # <|startoftranscript|> <|am|> <|transcribe|>
 
-# ─── TEST B: CAPTURE UNMERGED LOGITS ───
-print("\n2. Running forward pass on UNMERGED model...")
+def tied(a, b):
+    return a.data_ptr() == b.data_ptr()
+
+
+print("\n1. Unmerged LoRA model (float32)")
+base = WhisperForConditionalGeneration.from_pretrained(str(PHASE1_MERGED), torch_dtype=torch.float32)
+peft_model = PeftModel.from_pretrained(base, str(ADAPTER_DIR)).eval()
+inner = peft_model.base_model.model
+
+print("   decoder embeddings tied to output projection:",
+      tied(inner.model.decoder.embed_tokens.weight, inner.proj_out.weight))
+
+torch.manual_seed(cfg.SEED)
+audio = torch.randn(1, 128, 3000, dtype=torch.float32)  # fixed random features, not speech
 with torch.no_grad():
-    out_unmerged = peft_model(input_features=dummy_audio, decoder_input_ids=dummy_decoder_ids)
-    logits_unmerged = out_unmerged.logits
+    logits_unmerged = peft_model(input_features=audio, decoder_input_ids=decoder_ids).logits
 
-# ─── TEST C: THE PER-LAYER DELTA WEIGHT TEST ───
-# Let's inspect the first self-attention key projection layer in the encoder
-target_layer = peft_model.base_model.model.model.encoder.layers[0].self_attn.k_proj
-base_weight = target_layer.base_layer.weight.data.clone()
-delta_weight = target_layer.get_delta_weight("default").clone()
-theoretical_merged_weight = base_weight + delta_weight
+    layer = inner.model.encoder.layers[0].self_attn.k_proj
+    expected = layer.base_layer.weight.data + layer.get_delta_weight("default")
 
-print("\n3. Merging weights via merge_and_unload()...")
-merged_model = peft_model.merge_and_unload(safe_merge=True).eval()
+print("\n2. Merging with merge_and_unload(safe_merge=True)")
+merged = peft_model.merge_and_unload(safe_merge=True).eval()
 
-# Check the exact same layer after merge
-actual_merged_weight = merged_model.model.encoder.layers[0].self_attn.k_proj.weight.data
-delta_diff = torch.max(torch.abs(theoretical_merged_weight - actual_merged_weight))
-print(f"\n[Delta Test] Max difference between theoretical merge and actual merge: {delta_diff.item():.8f}")
+actual = merged.model.encoder.layers[0].self_attn.k_proj.weight.data
+weight_gap = (expected - actual).abs().max().item()
+print(f"   encoder layer 0, k_proj: max |base + delta - merged| = {weight_gap:.3e}")
 
-# ─── TEST D: THE TIED EMBEDDINGS POINTER TEST (AFTER MERGE) ───
-decoder_embed_ptr_merged = merged_model.model.decoder.embed_tokens.weight.data_ptr()
-lm_head_ptr_merged = merged_model.proj_out.weight.data_ptr()
-print(f"\n[Merged] Decoder Embeddings Pointer: {decoder_embed_ptr_merged}")
-print(f"[Merged] LM Head Output Pointer:     {lm_head_ptr_merged}")
-print(f"Are they tied? {decoder_embed_ptr_merged == lm_head_ptr_merged}")
+print("\n3. Merged model")
+print("   decoder embeddings tied to output projection:",
+      tied(merged.model.decoder.embed_tokens.weight, merged.proj_out.weight))
 
-# ─── TEST E: CAPTURE MERGED LOGITS AND COMPARE ───
-print("\n4. Running forward pass on MERGED model...")
 with torch.no_grad():
-    out_merged = merged_model(input_features=dummy_audio, decoder_input_ids=dummy_decoder_ids)
-    logits_merged = out_merged.logits
+    logits_merged = merged(input_features=audio, decoder_input_ids=decoder_ids).logits
 
-logit_diff = torch.max(torch.abs(logits_unmerged - logits_merged))
-print(f"\n[Logit Equivalence Test] Maximum absolute difference in output logits: {logit_diff.item():.8f}")
-
-if logit_diff < 1e-4:
-    print(">>> SUCCESS: Models are mathematically equivalent!")
-else:
-    print(">>> FAILURE: merge_and_unload() broke the computational graph or weights!")
-    
+logit_gap = (logits_unmerged - logits_merged).abs().max().item()
+print(f"\n4. Max |logit difference| over the forward pass: {logit_gap:.3e}")
+verdict = "EQUIVALENT" if logit_gap < TOLERANCE else "NOT EQUIVALENT"
+print(f"   threshold {TOLERANCE:g}: {verdict}")

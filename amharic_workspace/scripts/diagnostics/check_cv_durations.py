@@ -1,5 +1,6 @@
-# check_cv_durations.py  (run from amharic_workspace, with env.amh.sh sourced)
+
 import pandas as pd
+from common import config as cfg  # must load before transformers/datasets
 import librosa
 from config import CV_DIR
 

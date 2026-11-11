@@ -1,4 +1,5 @@
 import json
+from common import config as cfg  # must load before transformers/datasets
 from datasets import load_from_disk
 from leyu_stats import load, normalize, paired_bootstrap
 

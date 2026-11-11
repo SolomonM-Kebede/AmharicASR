@@ -1,3 +1,4 @@
+from data.normalize import normalize_amharic
 """
 Amharic ASR - final TEST evaluation of the full fine-tuned (no LoRA) model on the
 joint speaker+text-independent split.
@@ -19,6 +20,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List
 
 import jiwer
+from common import config as cfg  # must load before transformers/datasets
 import torch
 from datasets import load_from_disk
 from transformers import (

@@ -3,11 +3,13 @@ Outside-subset comparison: test utterances NOT in the 688-recording subset.
 C2 (LoRA, bf16) vs C4b (full FT, bf16). Printed delta = WER_X - WER_Y (positive: C4b better).
 """
 import numpy as np
+from common import config as cfg  # must load before transformers/datasets
 from datasets import load_from_disk
 from common.bootstrap_utils import load, word_errors, cache_ok, bootstrap_delta
 
-X_JSONL = "results/persample/results_raw_persample.jsonl"   # C2, LoRA
-Y_JSONL = "results/persample/c4b_bfloat16_persample.jsonl"               # C4b, full FT
+# paths
+X_JSONL = "results/persample/results_raw_persample.jsonl"   
+Y_JSONL = "results/persample/c4b_bfloat16_persample.jsonl"               
 TEST_CACHE = "phase2_leyu/dataset_cache_joint_independent"
 SUBSET_FILE = "splits/subset_688_idx.txt"
 B, SEED = 10_000, 42

@@ -3,6 +3,7 @@ Validation-test overlap check and bootstrap on the non-overlapping test utteranc
 X = C2 (LoRA, bf16), Y = C4b (full FT, bf16). Printed delta = WER_X - WER_Y (positive: Y better).
 """
 import numpy as np
+from common import config as cfg  # must load before transformers/datasets
 from datasets import load_from_disk
 from common.bootstrap_utils import load, word_errors, cache_ok, bootstrap_delta
 

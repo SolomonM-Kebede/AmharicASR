@@ -1,43 +1,43 @@
-import os
+"""
+Test independent training script 
+"""
+
+
+# Config sets the Hugging Face cache and offline flags. It must load before transformers and datasets, so it comes first among the project imports.
+from common import config as cfg 
+
 import io
-import torch
-import librosa
 from dataclasses import dataclass
 from typing import Any, Dict, List
-from datasets import load_from_disk, Audio
+
+import librosa
+import torch
+from datasets import Audio, load_from_disk
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from transformers import (
-    WhisperProcessor,
-    WhisperForConditionalGeneration,
-    Seq2SeqTrainingArguments,
-    Seq2SeqTrainer,
     EarlyStoppingCallback,
     GenerationConfig,
+    Seq2SeqTrainer,
+    Seq2SeqTrainingArguments,
+    WhisperForConditionalGeneration,
+    WhisperProcessor,
 )
-from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 
+from data.normalize import normalize_amharic  # shared normalization
 
-# --- Cache & Environment ---
-CUSTOM_CACHE = "~/AmharicASR/hf_cache"
-os.environ["HF_HOME"] = CUSTOM_CACHE
-os.environ["HF_DATASETS_CACHE"] = CUSTOM_CACHE
-os.environ["HF_HUB_OFFLINE"] = "1"
-os.environ["TRANSFORMERS_OFFLINE"] = "1"
-
-BASE_DIR = "~/AmharicASR/amharic_workspace"
-DATASET_DIR = os.path.join(BASE_DIR, "phase2_leyu/dataset_cache_text_independent")
-OUTPUT_DIR = os.path.join(BASE_DIR, "phase2_leyu/models/text_indep_lora_run")
-PHASE1_MERGED = os.path.join(BASE_DIR, "phase1_curriculum/models/phase1_best_model_merged")
-
-# --- Cache & Environment (Keep your existing imports and paths here) ---
+# Paths (from config; override with AMHARIC_* variables in env.amh.sh)
+DATASET_DIR   = cfg.require(cfg.DATA_DIR / "phase2_leyu" / "dataset_cache_text_independent")
+OUTPUT_DIR    = cfg.DATA_DIR / "phase2_leyu" / "models" / "text_indep_lora_run"
+PHASE1_MERGED = cfg.require(cfg.PHASE1_MERGED)
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 print("Loading processor...")
-processor = WhisperProcessor.from_pretrained(PHASE1_MERGED, language="amharic", task="transcribe")
+processor = WhisperProcessor.from_pretrained(str(PHASE1_MERGED), language="amharic", task="transcribe")
 DECODER_START_TOKEN_ID = processor.tokenizer.convert_tokens_to_ids("<|startoftranscript|>")
 forced_ids = processor.get_decoder_prompt_ids(language="amharic", task="transcribe", no_timestamps=True)
 
-# ---------------------------------------------------------
-# 1. PROCESS DATASET FIRST (Safe to use num_proc=4 here)
-# ---------------------------------------------------------
+# PROCESS DATASET FIRST (Safe to use num_proc=4 here)
+
 print(f"Loading text-independent dataset from {DATASET_DIR}...")
 raw_ds = load_from_disk(DATASET_DIR)
 raw_ds = raw_ds.cast_column("audio", Audio(decode=False))
@@ -90,24 +90,7 @@ model = get_peft_model(model, config)
 model.enable_input_require_grads()
 model.print_trainable_parameters()
 
-# --- Normalization ---
-AMHARIC_CHAR_MAP = {
-    "ሐ": "ሀ", "ሑ": "ሁ", "ሒ": "ሂ", "ሓ": "ሃ", "ሔ": "ሄ", "ሕ": "ህ", "ሖ": "ሆ",
-    "ኀ": "ሀ", "ኁ": "ሁ", "ኂ": "ሂ", "ኃ": "ሃ", "ኄ": "ሄ", "ኅ": "ህ", "ኆ": "ሆ",
-    "ዐ": "አ", "ዑ": "ኡ", "ዒ": "ኢ", "ዓ": "ኣ", "ዔ": "ኤ", "ዕ": "እ", "ዖ": "ኦ",
-    "ሠ": "ሰ", "ሡ": "ሱ", "ሢ": "ሲ", "ሣ": "ሳ", "ሤ": "ሴ", "ሥ": "ስ", "ሦ": "ሶ",
-    "ፀ": "ጸ", "ፁ": "ጹ", "ፂ": "ጺ", "ፃ": "ጻ", "ፄ": "ጼ", "ፅ": "ጽ", "ፆ": "ጾ",
-}
-PUNCT = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~።፣፤፥፦'
-
-def normalize_amharic(text: str) -> str:
-    for src, tgt in AMHARIC_CHAR_MAP.items():
-        text = text.replace(src, tgt)
-    for p in PUNCT:
-        text = text.replace(p, " ")
-    return " ".join(text.split()).strip()
-
-# --- Collator & Metrics ---
+#  Collator & Metrics 
 @dataclass
 class DataCollatorSpeechSeq2SeqWithPadding:
     processor: Any
@@ -158,7 +141,7 @@ class SafeWhisperTrainer(Seq2SeqTrainer):
             inputs["input_features"] = inputs["input_features"].to(dtype=next(model.parameters()).dtype)
         return super().prediction_step(model, inputs, prediction_loss_only, ignore_keys)
 
-# --- Training Arguments (Exact Phase 2 Config + True Eval Fix) ---
+# Training Arguments (Exact Phase 2 Config + True Eval Fix) 
 training_args = Seq2SeqTrainingArguments(
     output_dir                  = OUTPUT_DIR,
     num_train_epochs            = 10,

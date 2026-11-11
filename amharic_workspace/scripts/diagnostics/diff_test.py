@@ -1,3 +1,4 @@
+from data.normalize import normalize_amharic
 """
 Check text overlap between ALFFA+CV (training-only data) and Leyu val/test
 (held-out). Run before committing GPU time to the joint training run.
@@ -7,6 +8,7 @@ CUSTOM_CACHE = "~/AmharicASR/hf_cache"
 os.environ["HF_HOME"] = CUSTOM_CACHE
 
 import pandas as pd
+from common import config as cfg  # must load before transformers/datasets
 from datasets import load_dataset, load_from_disk, Dataset as HFDataset, Audio
 
 BASE_DIR = "~/AmharicASR/amharic_workspace"

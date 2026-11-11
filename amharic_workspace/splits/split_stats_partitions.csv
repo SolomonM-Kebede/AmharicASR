@@ -1,0 +1,4 @@
+partition,utterances,speakers,distinct_texts,pct_over_30s,pct_over_448_tokens,median_duration_s
+train,10296,214,3824,58.5,62.4,33.3
+validation,5942,32,4275,85.6,89.1,41.9
+test,4588,32,3249,83.3,84.2,42.0

@@ -1,0 +1,67 @@
+{
+  "split": "joint_independent",
+  "partitions": {
+    "train": {
+      "utterances": 10296,
+      "speakers": 214,
+      "distinct_texts": 3824,
+      "pct_over_30s": 58.5,
+      "pct_over_448_tokens": 62.4,
+      "median_duration_s": 33.3,
+      "per_dialect": {
+        "gojjam": 2626,
+        "gonder": 1791,
+        "wello": 3136,
+        "shewa": 1211,
+        "addis ababa": 1532
+      }
+    },
+    "validation": {
+      "utterances": 5942,
+      "speakers": 32,
+      "distinct_texts": 4275,
+      "pct_over_30s": 85.6,
+      "pct_over_448_tokens": 89.1,
+      "median_duration_s": 41.9,
+      "per_dialect": {
+        "gojjam": 1321,
+        "gonder": 1394,
+        "wello": 1163,
+        "shewa": 831,
+        "addis ababa": 1233
+      }
+    },
+    "test": {
+      "utterances": 4588,
+      "speakers": 32,
+      "distinct_texts": 3249,
+      "pct_over_30s": 83.3,
+      "pct_over_448_tokens": 84.2,
+      "median_duration_s": 42.0,
+      "per_dialect": {
+        "gojjam": 654,
+        "gonder": 1237,
+        "wello": 836,
+        "shewa": 1101,
+        "addis ababa": 760
+      }
+    }
+  },
+  "overlap": {
+    "train_validation": {
+      "shared_speakers": 0,
+      "shared_distinct_texts": 0,
+      "pct_of_validation_utterances_with_text_in_train": 0.0
+    },
+    "train_test": {
+      "shared_speakers": 0,
+      "shared_distinct_texts": 0,
+      "pct_of_test_utterances_with_text_in_train": 0.0
+    },
+    "validation_test": {
+      "shared_speakers": 0,
+      "shared_distinct_texts": 2005,
+      "pct_of_test_utterances_with_text_in_validation": 67.0
+    }
+  }
+}

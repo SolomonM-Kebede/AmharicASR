@@ -1,3 +1,4 @@
+
 """
 Amharic ASR — RQ3: Full fine-tuning vs LoRA
 ================================================================================
@@ -15,77 +16,52 @@ Memory implications, addressed proactively:
 """
 
 import os
+from common import config as cfg  # isort: skip  (must load before transformers and datasets)
 
-CUSTOM_CACHE = os.environ.get("STT_CACHE_DIR", os.path.expanduser("~/AmharicASR/clean_cache"))
-os.makedirs(CUSTOM_CACHE, exist_ok=True)
-os.environ["HF_HOME"] = CUSTOM_CACHE
-os.environ["HF_DATASETS_CACHE"] = CUSTOM_CACHE
-os.environ["HF_HUB_CACHE"] = CUSTOM_CACHE
-os.environ["HF_MODULES_CACHE"] = CUSTOM_CACHE
-os.environ["HF_METRICS_CACHE"] = CUSTOM_CACHE
-os.environ["HF_EVALUATE_CACHE"] = CUSTOM_CACHE
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-
-import json
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List
 
 import torch
-from datasets import load_from_disk, concatenate_datasets
+from datasets import concatenate_datasets, load_from_disk
 from transformers import (
-    WhisperProcessor, WhisperForConditionalGeneration,
-    Seq2SeqTrainingArguments, Seq2SeqTrainer, GenerationConfig,
     EarlyStoppingCallback,
+    GenerationConfig,
+    Seq2SeqTrainer,
+    Seq2SeqTrainingArguments,
+    WhisperForConditionalGeneration,
+    WhisperProcessor,
 )
 from transformers.trainer_utils import get_last_checkpoint
 
+from data.normalize import normalize_amharic  # shared normalization; do not redefine here
+
+# Paths, all from config
+PHASE1_MERGED = cfg.PHASE1_MERGED
+JOINT_CACHE = cfg.JOINT_STANDARD_CACHE
+LEYU_ONLY_CACHE = cfg.LEYU_SI_CACHE
+OUTPUT_DIR = cfg.PHASE3_DIR / "models"
+RESULTS_DIR = cfg.PHASE3_DIR / "results"
+
+cfg.require_paths(PHASE1_MERGED, JOINT_CACHE, LEYU_ONLY_CACHE)
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
 print(f"torch  : {torch.__version__}")
 if torch.cuda.device_count() == 0:
-    raise RuntimeError("No GPU found — aborting.")
+    raise RuntimeError("No GPU found; aborting.")
 print(f"GPU    : {torch.cuda.get_device_name(0)}")
 print(f"VRAM   : {torch.cuda.get_device_properties(0).total_memory / 1e9:.0f} GB")
 
-# ─── Hyperparameters — same as LoRA runs where applicable ───────────────────
-LEARNING_RATE    = float(os.environ.get("LEARNING_RATE", 5e-6))  # 5e-6 for Full FT stability
-EPOCHS           = int(os.environ.get("EPOCHS", 10))
-TRAIN_BATCH_SIZE = int(os.environ.get("TRAIN_BATCH_SIZE", 4))
-EVAL_BATCH_SIZE  = int(os.environ.get("EVAL_BATCH_SIZE", 4))
-GRAD_ACCUM       = int(os.environ.get("GRAD_ACCUM", 8))   # 4*8=32
-EVAL_STEPS       = int(os.environ.get("EVAL_STEPS", 200))
-EVAL_SUBSET_SIZE = int(os.environ.get("EVAL_SUBSET_SIZE", 400)) # Dropped to 400 to save eval time
+# Hyperparameters (overridable from the environment)
+LEARNING_RATE           = float(os.environ.get("LEARNING_RATE", 5e-6))   # Full FT stability
+EPOCHS                  = int(os.environ.get("EPOCHS", 10))
+TRAIN_BATCH_SIZE        = int(os.environ.get("TRAIN_BATCH_SIZE", 4))
+EVAL_BATCH_SIZE         = int(os.environ.get("EVAL_BATCH_SIZE", 4))
+GRAD_ACCUM              = int(os.environ.get("GRAD_ACCUM", 8))          # 4 x 8 = 32 effective
+EVAL_STEPS              = int(os.environ.get("EVAL_STEPS", 200))
+EVAL_SUBSET_SIZE        = int(os.environ.get("EVAL_SUBSET_SIZE", 400))  # Joint LoRA runs use 800
 EARLY_STOPPING_PATIENCE = int(os.environ.get("EARLY_STOPPING_PATIENCE", 8))
 RESUME_FROM_CHECKPOINT  = os.environ.get("RESUME_FROM_CHECKPOINT", "true").lower() == "true"
-OPTIM = os.environ.get("OPTIM", "adamw_bnb_8bit")
-
-BASE_DIR      = "/home/stud_homes/s8345520/AmharicASR/amharic_workspace"
-PHASE1_MERGED = os.path.join(BASE_DIR, "phase1_curriculum/models/phase1_best_model_merged")
-
-# ── The Two Caches for Apples-to-Apples Path B ──
-JOINT_CACHE     = os.path.join(BASE_DIR, "phase2b_leyu_standard/standard_speech_cache_ratio1.0")
-LEYU_ONLY_CACHE = os.path.join(BASE_DIR, "phase2_leyu/dataset_cache_2026-08-expanded-spkindep")
-
-PHASE3_DIR  = os.path.join(BASE_DIR, "phase3_full_finetune")
-OUTPUT_DIR  = os.path.join(PHASE3_DIR, "models")
-RESULTS_DIR = os.path.join(PHASE3_DIR, "results")
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-os.makedirs(RESULTS_DIR, exist_ok=True)
-
-AMHARIC_CHAR_MAP = {
-    "ሐ": "ሀ", "ሑ": "ሁ", "ሒ": "ሂ", "ሓ": "ሃ", "ሔ": "ሄ", "ሕ": "ህ", "ሖ": "ሆ",
-    "ኀ": "ሀ", "ኁ": "ሁ", "ኂ": "ሂ", "ኃ": "ሃ", "ኄ": "ሄ", "ኅ": "ህ", "ኆ": "ሆ",
-    "ዐ": "አ", "ዑ": "ኡ", "ዒ": "ኢ", "ዓ": "ኣ", "ዔ": "ኤ", "ዕ": "እ", "ዖ": "ኦ",
-    "ሠ": "ሰ", "ሡ": "ሱ", "ሢ": "ሲ", "ሣ": "ሳ", "ሤ": "ሴ", "ሥ": "ስ", "ሦ": "ሶ",
-    "ፀ": "ጸ", "ፁ": "ጹ", "ፂ": "ጺ", "ፃ": "ጻ", "ፄ": "ጼ", "ፅ": "ጽ", "ፆ": "ጾ",
-}
-PUNCT = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~።፣፤፥፦'
-
-def normalize_amharic(text: str) -> str:
-    for src, tgt in AMHARIC_CHAR_MAP.items():
-        text = text.replace(src, tgt)
-    for p in PUNCT:
-        text = text.replace(p, " ")
-    return " ".join(text.split()).strip()
+OPTIM                   = os.environ.get("OPTIM", "adamw_bnb_8bit")
 
 print(f"\nLoading processor from {PHASE1_MERGED} ...")
 processor = WhisperProcessor.from_pretrained(PHASE1_MERGED, language="amharic", task="transcribe")

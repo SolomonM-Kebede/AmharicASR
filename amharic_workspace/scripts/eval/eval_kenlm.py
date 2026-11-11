@@ -1,9 +1,11 @@
+from data.normalize import normalize_amharic
 """
 Amharic ASR — Final Evaluation with KenLM Shallow Fusion Rescoring
 Target: Leyu Dialects Test Set
 """
 
 import os
+from common import config as cfg  # must load before transformers/datasets
 import torch
 import kenlm
 import evaluate

@@ -1,3 +1,4 @@
+
 """
 Amharic ASR — Joint Composition Ablation (Leyu joint-independent + ALFFA + CV)
 Controlled pair: MODEL_SOURCE=raw uses openai/whisper-large-v3,
@@ -6,14 +7,9 @@ Everything else — split, data composition, LoRA config — held identical.
 """
 
 import os
-CUSTOM_CACHE = "/home/stud_homes/s8345520/AmharicASR/hf_cache"
-os.environ["HF_HOME"] = CUSTOM_CACHE
-os.environ["HF_DATASETS_CACHE"] = CUSTOM_CACHE
-os.environ["HF_HUB_OFFLINE"] = "1"
-os.environ["TRANSFORMERS_OFFLINE"] = "1"
-os.environ["PYTORCH_ALLOC_CONF"] = "expandable_segments:True"
-os.environ["NVIDIA_TF32_OVERRIDE"] = "1"
 
+# Config sets the Hugging Face cache and offline flags. It must load before transformers and datasets.
+from common import config as cfg  
 import io
 from dataclasses import dataclass
 from typing import Any, Dict, List
@@ -31,45 +27,32 @@ from transformers import (
     EarlyStoppingCallback,
 )
 from peft import LoraConfig, get_peft_model
+from data.normalize import normalize_amharic
 
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
 
-# Model source switch — the ONLY intended difference between the two arms 
+# Model source switch: the only intended difference between the two arms
 MODEL_SOURCE = os.environ.get("MODEL_SOURCE", "raw")
 assert MODEL_SOURCE in ("raw", "phase1"), "MODEL_SOURCE must be 'raw' or 'phase1'"
 
-BASE_DIR      = "/home/stud_homes/s8345520/AmharicASR/amharic_workspace"
-PHASE1_MERGED = os.path.join(BASE_DIR, "phase1_curriculum/models/phase1_best_model_merged")
-MODEL_NAME    = "openai/whisper-large-v3" if MODEL_SOURCE == "raw" else PHASE1_MERGED
+BASE_DIR      = str(cfg.REPO_ROOT)
+PHASE1_MERGED = str(cfg.PHASE1_MERGED)
+MODEL_NAME    = cfg.WHISPER_MODEL if MODEL_SOURCE == "raw" else PHASE1_MERGED
+if MODEL_SOURCE == "phase1":
+    cfg.require(cfg.PHASE1_MERGED)
 
-LEYU_CACHE    = os.path.join(BASE_DIR, "phase2_leyu/dataset_cache_joint_independent")
+LEYU_CACHE    = str(cfg.require(cfg.LEYU_JOINT_CACHE))
 ALFFA_DATASET = "hadamard-2/alffa-amharic"
-LOCAL_CV_DIR  = os.environ.get("LOCAL_CV_DIR", os.path.join(BASE_DIR, "cv-corpus-25.0-2026-03-09/am"))
+LOCAL_CV_DIR  = str(cfg.require(cfg.CV_DIR))
 OUTPUT_DIR    = os.path.join(BASE_DIR, f"joint_composition_ablation/models/{MODEL_SOURCE}_joint_lora_run")
 
 STANDARD_TO_DIALECT_RATIO = 1.0
-SEED = 42
+SEED = cfg.SEED
 EVAL_SUBSET_SIZE = int(os.environ.get("EVAL_SUBSET_SIZE", 800))
 
-# Normalization 
-AMHARIC_CHAR_MAP = {
-    "ሐ": "ሀ", "ሑ": "ሁ", "ሒ": "ሂ", "ሓ": "ሃ", "ሔ": "ሄ", "ሕ": "ህ", "ሖ": "ሆ",
-    "ኀ": "ሀ", "ኁ": "ሁ", "ኂ": "ሂ", "ኃ": "ሃ", "ኄ": "ሄ", "ኅ": "ህ", "ኆ": "ሆ",
-    "ዐ": "አ", "ዑ": "ኡ", "ዒ": "ኢ", "ዓ": "ኣ", "ዔ": "ኤ", "ዕ": "እ", "ዖ": "ኦ",
-    "ሠ": "ሰ", "ሡ": "ሱ", "ሢ": "ሲ", "ሣ": "ሳ", "ሤ": "ሴ", "ሥ": "ስ", "ሦ": "ሶ",
-    "ፀ": "ጸ", "ፁ": "ጹ", "ፂ": "ጺ", "ፃ": "ጻ", "ፄ": "ጼ", "ፅ": "ጽ", "ፆ": "ጾ",
-}
-PUNCT = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~።፣፤፥፦'
-def normalize_amharic(text):
-    for src, tgt in AMHARIC_CHAR_MAP.items():
-        text = text.replace(src, tgt)
-    for p in PUNCT:
-        text = text.replace(p, " ")
-    return " ".join(text.split()).strip()
 
-
-# 1. LOAD & COMBINE DATA — before any CUDA context exists
+# LOAD & COMBINE DATA — before any CUDA context exists
 print(f"MODEL_SOURCE = {MODEL_SOURCE}  ->  {MODEL_NAME}")
 print("Loading processor...")
 processor = WhisperProcessor.from_pretrained(MODEL_NAME, language="amharic", task="transcribe")

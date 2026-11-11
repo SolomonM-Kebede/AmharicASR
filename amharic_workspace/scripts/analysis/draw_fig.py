@@ -1,8 +1,4 @@
 """Reproduce fig_rq3.png and fig_per_dialect.png from the evaluation summary files.
-
-Run from amharic_workspace/:
-    python make_figures.py
-
 Reads per-dialect and overall WER from the eval_controls/*.json summaries, prints
 the values used, and writes both figures at 300 dpi to the current directory.
 """
@@ -89,7 +85,7 @@ def main():
     fig.savefig("fig_rq3.png", dpi=300)
     plt.close(fig)
 
-    # ---- Figure 2: A2, D1, C1 by dialect, with overall as the last group.
+    
     runs = [
         ("A2: SI, 38,948 utt.", data["a2"]),
         ("D1: SI sample, 10,296 utt.", data["d1"]),

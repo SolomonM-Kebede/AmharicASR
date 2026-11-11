@@ -1,3 +1,4 @@
+
 """
 Amharic ASR — Joint Composition Ablation: Final Evaluation
 Evaluates either arm (raw or phase1) on the shared joint-independent test set,
@@ -5,55 +6,34 @@ beam=5, forced decoding, max_length=448.
 Generates per-sample JSONL for paired bootstrap statistical testing.
 """
 
-import os
-CUSTOM_CACHE = os.path.expanduser("~/AmharicASR/hf_cache")
-os.environ["HF_HOME"] = CUSTOM_CACHE
-os.environ["HF_HUB_OFFLINE"] = "1"
-os.environ["TRANSFORMERS_OFFLINE"] = "1"
-
+from common import config as cfg  
 import io
 import json
+import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, List
+from data.normalize import normalize_amharic
 
-import torch
 import librosa
-from datasets import load_from_disk, Audio
+import torch
+from datasets import Audio, load_from_disk
 from transformers import (
-    WhisperProcessor,
-    WhisperForConditionalGeneration,
-    Seq2SeqTrainingArguments,
     Seq2SeqTrainer,
+    Seq2SeqTrainingArguments,
+    WhisperForConditionalGeneration,
+    WhisperProcessor,
 )
 
-EVAL_MODEL_SOURCE = os.environ.get("EVAL_MODEL_SOURCE", "raw")
-pass
 
-BASE_DIR = os.path.expanduser("~/AmharicASR/amharic_workspace")
-MERGED_DIR = os.environ["MERGED_DIR"]
-DATASET_DIR  = os.path.join(BASE_DIR, "phase2_leyu/dataset_cache_joint_independent")
-RESULTS_PATH = os.environ["OUT_PREFIX"] + ".json"
-PERSAMPLE_PATH = os.environ["OUT_PREFIX"] + "_persample.jsonl"
+MERGED_DIR = Path(cfg.require_env("MERGED_DIR"))
+OUT_PREFIX = Path(cfg.require_env("OUT_PREFIX"))
+RESULTS_PATH = OUT_PREFIX.with_suffix(".json")
+PERSAMPLE_PATH = OUT_PREFIX.parent / (OUT_PREFIX.name + "_persample.jsonl")
+DATASET_DIR = cfg.LEYU_JOINT_CACHE
 
-AMHARIC_CHAR_MAP = {
-    "ሐ": "ሀ", "ሑ": "ሁ", "ሒ": "ሂ", "ሓ": "ሃ", "ሔ": "ሄ", "ሕ": "ህ", "ሖ": "ሆ",
-    "ኀ": "ሀ", "ኁ": "ሁ", "ኂ": "ሂ", "ኃ": "ሃ", "ኄ": "ሄ", "ኅ": "ህ", "ኆ": "ሆ",
-    "ዐ": "አ", "ዑ": "ኡ", "ዒ": "ኢ", "ዓ": "ኣ", "ዔ": "ኤ", "ዕ": "እ", "ዖ": "ኦ",
-    "ሠ": "ሰ", "ሡ": "ሱ", "ሢ": "ሲ", "ሣ": "ሳ", "ሤ": "ሴ", "ሥ": "ስ", "ሦ": "ሶ",
-    "ፀ": "ጸ", "ፁ": "ጹ", "ፂ": "ጺ", "ፃ": "ጻ", "ፄ": "ጼ", "ፅ": "ጽ", "ፆ": "ጾ",
-}
-PUNCT = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~።፣፤፥፦'
-def normalize_amharic(text):
-    if text is None: return ""
-    for src, tgt in AMHARIC_CHAR_MAP.items():
-        text = text.replace(src, tgt)
-    for p in PUNCT:
-        text = text.replace(p, " ")
-    return " ".join(text.split()).strip()
 
-# ---------------------------------------------------------
-# 1. DATASET FIRST
-# ---------------------------------------------------------
+# dataset
 print(f"EVAL_MODEL_SOURCE = {EVAL_MODEL_SOURCE}")
 print(f"Loading processor from {MERGED_DIR}...")
 processor = WhisperProcessor.from_pretrained(MERGED_DIR)
@@ -82,12 +62,10 @@ cols_to_remove = [c for c in raw_test.column_names if c not in ["dialect", "orig
 print(f"Extracting log-Mel features for {len(raw_test)} test samples...")
 processed_test = raw_test.map(prepare_dataset, remove_columns=cols_to_remove, num_proc=4)
 
-# ADDITION 2: Pre-compute dialect indices to bypass filter() disk I/O bottleneck
+
 all_dialects = processed_test["dialect"]
 
-# ---------------------------------------------------------
-# 2. MODEL
-# ---------------------------------------------------------
+#model
 print(f"Loading model from {MERGED_DIR}...")
 model = WhisperForConditionalGeneration.from_pretrained(
     MERGED_DIR, torch_dtype=getattr(torch, os.environ.get("DTYPE", "bfloat16")), attn_implementation="sdpa"
@@ -145,7 +123,7 @@ all_pred, all_ref = [], []
 import evaluate as _eval
 wer_metric, cer_metric = _eval.load("wer"), _eval.load("cer")
 
-# ADDITION 3: Open the JSONL file to record the predictions
+# record predi
 persample_file = open(PERSAMPLE_PATH, "w", encoding="utf-8")
 
 for dialect in unique_dialects:
@@ -163,7 +141,7 @@ for dialect in unique_dialects:
     pred_str = [normalize_amharic(s) for s in processor.tokenizer.batch_decode(result.predictions, skip_special_tokens=True)]
     label_str = [normalize_amharic(s) for s in processor.tokenizer.batch_decode(label_ids, skip_special_tokens=True)]
     
-    # ADDITION 4: Write out each utterance exactly like the FFT script did
+    # Write out each utterance exactly like the FFT script did
     for idx, r, p in zip(dialect_subset["orig_idx"], label_str, pred_str):
         persample_file.write(json.dumps({
             "orig_idx": int(idx),

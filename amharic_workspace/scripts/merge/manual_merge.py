@@ -1,12 +1,13 @@
 import os
+from common import config as cfg  # must load before transformers/datasets
 import torch
 from transformers import WhisperForConditionalGeneration, WhisperProcessor
 from peft import PeftModel
 
-BASE_DIR = "~/AmharicASR/amharic_workspace"
-PHASE1_MERGED = os.path.join(BASE_DIR, "phase1_curriculum/models/phase1_best_model_merged")
-ADAPTER_DIR = os.path.join(BASE_DIR, "phase2b_leyu_standard/models/phase2b_lora_adapter")
-OUTPUT_DIR = os.path.join(BASE_DIR, "phase2b_leyu_standard/models/phase2b_clean_merged_fp32")
+BASE_DIR      = str(cfg.REPO_ROOT)
+PHASE1_MERGED = BASE_DIR/ "phase1_curriculum/models/phase1_best_model_merged"
+ADAPTER_DIR = BASE_DIR/ "phase2b_leyu_standard/models/phase2b_lora_adapter"
+OUTPUT_DIR = BASE_DIR/ "phase2b_leyu_standard/models/phase2b_clean_merged_fp32"
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 

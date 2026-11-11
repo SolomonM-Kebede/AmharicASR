@@ -1,5 +1,5 @@
 import os, sys, torch
-os.environ.update(HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1", HF_HOME="/home/stud_homes/s8345520/AmharicASR/hf_cache")
+from common import config as cfg  
 from transformers import WhisperForConditionalGeneration, WhisperProcessor
 from peft import PeftModel
 adapter, out = sys.argv[1], sys.argv[2]

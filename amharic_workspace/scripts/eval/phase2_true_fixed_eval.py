@@ -1,3 +1,4 @@
+from data.normalize import normalize_amharic
 """
 Amharic ASR — Phase 2 (Leyu-only) FINAL eval, TRUE fix
 ========================================================
@@ -27,6 +28,7 @@ import json
 from dataclasses import dataclass
 from typing import Any, Dict, List
 
+from common import config as cfg  # must load before transformers/datasets
 import torch
 from datasets import load_from_disk
 from transformers import (

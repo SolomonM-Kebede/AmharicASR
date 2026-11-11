@@ -1,3 +1,4 @@
+from data.normalize import normalize_amharic
 """
 Amharic ASR — Zero-shot Whisper large-v3 baseline + test-set audio export
 ============================================================================
@@ -42,6 +43,7 @@ from typing import Any, Dict, List
 
 import numpy as np
 import soundfile as sf
+from common import config as cfg  # must load before transformers/datasets
 import torch
 from datasets import load_dataset, Audio
 from transformers import (

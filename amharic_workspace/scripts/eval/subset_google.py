@@ -1,8 +1,10 @@
+from data.normalize import normalize_amharic
 """Select the 688-recording subset (<=30 s audio, <=448 label tokens) and score Google on it.
 
 Missing Google outputs are reported two ways: excluded, and scored as full deletions.
 """
 import json
+from common import config as cfg  # must load before transformers/datasets
 import evaluate
 from transformers import WhisperTokenizer
 

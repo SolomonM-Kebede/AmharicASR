@@ -1,3 +1,4 @@
+from data.normalize import normalize_amharic
 """
 Amharic ASR — Phase 1 (standard dialect) TRUE evaluation
 ============================================================
@@ -19,6 +20,7 @@ os.environ["TRANSFORMERS_OFFLINE"] = "1"
 import json
 from dataclasses import dataclass
 from typing import Any, Dict, List
+from common import config as cfg  # must load before transformers/datasets
 import torch
 from datasets import load_from_disk
 from transformers import (

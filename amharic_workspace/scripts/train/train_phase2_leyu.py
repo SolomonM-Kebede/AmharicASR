@@ -1,24 +1,15 @@
+
 """
 Amharic ASR — Phase 2 Leyu Dialect Adaptation with resume capability from the last checkpoint
 Dataset : Leyu Amharic dialect(Gojjam, Gonder, Wello, Shewa + Addis Ababa), expanded corpus
 Model   : Merged Phase 1 model + fresh LoRA adapter
 """
 
-import os
-
-# cache override to prevent duplication
-CUSTOM_CACHE = "~/AmharicASR/hf_cache"
-os.makedirs(CUSTOM_CACHE, exist_ok=True)
-os.environ["HF_HOME"] = CUSTOM_CACHE
-os.environ["HF_DATASETS_CACHE"] = CUSTOM_CACHE
-os.environ["HF_HUB_CACHE"] = CUSTOM_CACHE
-os.environ["HF_MODULES_CACHE"] = CUSTOM_CACHE
-os.environ["HF_METRICS_CACHE"] = CUSTOM_CACHE
-os.environ["HF_EVALUATE_CACHE"] = CUSTOM_CACHE
-
-import os
+# Config sets the Hugging Face cache and offline flags. It must load before transformers.
+from common import config as cfg  
 import io
 import json
+import os
 import random
 from dataclasses import dataclass
 from pathlib import Path
@@ -41,12 +32,14 @@ from transformers import (
 )
 from peft import LoraConfig, get_peft_model, TaskType
 
+from data.normalize import normalize_amharic  # shared normalization; do not redefine here
+
 
 # Sanity check
 print(f"torch  : {torch.__version__}")
 N_GPUS = torch.cuda.device_count()
 if N_GPUS == 0:
-    raise RuntimeError("No GPU found — aborting.")
+    raise RuntimeError("No GPU found; aborting.")
 print(f"GPU    : {torch.cuda.get_device_name(0)}")
 print(f"VRAM   : {torch.cuda.get_device_properties(0).total_memory / 1e9:.0f} GB")
 
@@ -59,7 +52,7 @@ LEARNING_RATE   = float(os.environ.get("LEARNING_RATE", 1e-4))
 WEIGHT_DECAY    = float(os.environ.get("WEIGHT_DECAY", 0.01))
 WARMUP_STEPS    = int(os.environ.get("WARMUP_STEPS", 200))
 EPOCHS          = int(os.environ.get("EPOCHS", 10))
-TRAIN_BATCH_SIZE= int(os.environ.get("TRAIN_BATCH_SIZE", 16))
+TRAIN_BATCH_SIZE = int(os.environ.get("TRAIN_BATCH_SIZE", 16))
 EVAL_BATCH_SIZE = int(os.environ.get("EVAL_BATCH_SIZE", 8))
 GRAD_ACCUM      = int(os.environ.get("GRAD_ACCUM", 2))
 EVAL_STEPS      = int(os.environ.get("EVAL_STEPS", 200))
@@ -67,39 +60,38 @@ EARLY_STOPPING_PATIENCE = int(os.environ.get("EARLY_STOPPING_PATIENCE", 5))
 LABEL_SMOOTHING = float(os.environ.get("LABEL_SMOOTHING", 0.1))
 APPLY_SPEC_AUGMENT = os.environ.get("APPLY_SPEC_AUGMENT", "false").lower() == "true"
 
-# Split ratios 
-TEST_SIZE               = float(os.environ.get("TEST_SIZE", 0.10))
-VAL_SIZE_OF_REMAINING   = float(os.environ.get("VAL_SIZE_OF_REMAINING", 0.1111))
-SPLIT_SEED              = int(os.environ.get("SPLIT_SEED", 42))
+# Split ratios
+TEST_SIZE             = float(os.environ.get("TEST_SIZE", 0.10))
+VAL_SIZE_OF_REMAINING = float(os.environ.get("VAL_SIZE_OF_REMAINING", 0.1111))
+SPLIT_SEED            = int(os.environ.get("SPLIT_SEED", 42))
 
-# cache match
-DATASET_VERSION      = os.environ.get("DATASET_VERSION", "2026-08-expanded-spkindep")
-FORCE_REFRESH_CACHE   = os.environ.get("FORCE_REFRESH_CACHE", "false").lower() == "true"
+# Cache version and refresh control
+DATASET_VERSION     = os.environ.get("DATASET_VERSION", "2026-08-expanded-spkindep")
+FORCE_REFRESH_CACHE = os.environ.get("FORCE_REFRESH_CACHE", "false").lower() == "true"
 
-# fast training and eval by subsexmapling 
+# Evaluation subset for in-training validation (matches the Joint LoRA runs)
 EVAL_SUBSET_SIZE = int(os.environ.get("EVAL_SUBSET_SIZE", 800))
 
-# Resume control 
+# Resume control
 RESUME_FROM_CHECKPOINT = os.environ.get("RESUME_FROM_CHECKPOINT", "true").lower() == "true"
 
 
-# Paths 
-BASE_DIR   = "~/AmharicASR/amharic_workspace"
-PHASE1_MERGED = os.path.join(
-    BASE_DIR, "phase1_curriculum/models/phase1_best_model_merged"
-)
+# Paths (from config; override with AMHARIC_* variables in env.amh.sh)
+PHASE1_MERGED = str(cfg.PHASE1_MERGED)
 if not Path(PHASE1_MERGED).exists():
     raise FileNotFoundError(
         f"Phase 1 merged model not found at {PHASE1_MERGED}\n"
         "Run Phase 1 training first."
     )
 
-PHASE2_DIR  = os.path.join(BASE_DIR, "phase2_leyu")
-OUTPUT_DIR  = os.path.join(PHASE2_DIR, "models")   
-LEYU_CACHE  = os.path.join(PHASE2_DIR, f"dataset_cache_{DATASET_VERSION}")
-RESULTS_DIR = os.path.join(PHASE2_DIR, "results")
+PHASE2_DIR  = cfg.DATA_DIR / "phase2_leyu"
+OUTPUT_DIR  = str(PHASE2_DIR / "models")
+RESULTS_DIR = str(PHASE2_DIR / "results")
+# Fails with a clear message if the cache is missing. It is not created here,
+# because an empty folder would hide the problem.
+LEYU_CACHE  = str(cfg.require(PHASE2_DIR / f"dataset_cache_{DATASET_VERSION}"))
 
-for d in [OUTPUT_DIR, LEYU_CACHE, RESULTS_DIR]:
+for d in [OUTPUT_DIR, RESULTS_DIR]:
     os.makedirs(d, exist_ok=True)
 
 if RESUME_FROM_CHECKPOINT:
@@ -107,24 +99,6 @@ if RESUME_FROM_CHECKPOINT:
     if not ckpt_path.exists():
         print(f"WARNING: RESUME_FROM_CHECKPOINT=true but {ckpt_path} not found. "
               f"Trainer will look for the latest checkpoint under {OUTPUT_DIR} instead.")
-
-
-# Normalization
-AMHARIC_CHAR_MAP = {
-    "ሐ": "ሀ", "ሑ": "ሁ", "ሒ": "ሂ", "ሓ": "ሃ", "ሔ": "ሄ", "ሕ": "ህ", "ሖ": "ሆ",
-    "ኀ": "ሀ", "ኁ": "ሁ", "ኂ": "ሂ", "ኃ": "ሃ", "ኄ": "ሄ", "ኅ": "ህ", "ኆ": "ሆ",
-    "ዐ": "አ", "ዑ": "ኡ", "ዒ": "ኢ", "ዓ": "ኣ", "ዔ": "ኤ", "ዕ": "እ", "ዖ": "ኦ",
-    "ሠ": "ሰ", "ሡ": "ሱ", "ሢ": "ሲ", "ሣ": "ሳ", "ሤ": "ሴ", "ሥ": "ስ", "ሦ": "ሶ",
-    "ፀ": "ጸ", "ፁ": "ጹ", "ፂ": "ጺ", "ፃ": "ጻ", "ፄ": "ጼ", "ፅ": "ጽ", "ፆ": "ጾ",
-}
-PUNCT = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~።፣፤፥፦'
-
-def normalize_amharic(text: str) -> str:
-    for src, tgt in AMHARIC_CHAR_MAP.items():
-        text = text.replace(src, tgt)
-    for p in PUNCT:
-        text = text.replace(p, " ")
-    return " ".join(text.split()).strip()
 
 
 # Processor

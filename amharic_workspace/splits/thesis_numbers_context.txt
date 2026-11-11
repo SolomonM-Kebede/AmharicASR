@@ -1,0 +1,190 @@
+thesis/1_Introduction.tex:69:96.4
+thesis/1_Introduction.tex:192:0.9
+thesis/7_Appendix.tex:60:3.9
+thesis/7_Appendix.tex:60:100
+thesis/7_Appendix.tex:60:100
+thesis/7_Appendix.tex:124:16.01
+thesis/7_Appendix.tex:125:55.64
+thesis/7_Appendix.tex:201:96.4
+thesis/7_Appendix.tex:202:0
+thesis/7_Appendix.tex:203:0
+thesis/7_Appendix.tex:204:73.3
+thesis/7_Appendix.tex:210:49.7
+thesis/7_Appendix.tex:212:15.7
+thesis/7_Appendix.tex:212:13.9
+thesis/7_Appendix.tex:212:13.3
+thesis/7_Appendix.tex:212:3.5
+thesis/7_Appendix.tex:217:0.53
+thesis/7_Appendix.tex:224:13.0
+thesis/7_Appendix.tex:225:67
+thesis/2_Backgraund.tex:227:100
+thesis/2_Backgraund.tex:517:90
+thesis/2_Backgraund.tex:546:4.1
+thesis/2_Backgraund.tex:546:3.9
+thesis/5_Results.tex:25:174.34
+thesis/5_Results.tex:26:100
+thesis/5_Results.tex:28:25.91
+thesis/5_Results.tex:29:98.52
+thesis/5_Results.tex:29:32.15
+thesis/5_Results.tex:31:16.01
+thesis/5_Results.tex:32:31.16
+thesis/5_Results.tex:36:0.89
+thesis/5_Results.tex:36:31.16
+thesis/5_Results.tex:36:32.06
+thesis/5_Results.tex:37:95
+thesis/5_Results.tex:42:68.92
+thesis/5_Results.tex:43:35.13
+thesis/5_Results.tex:43:33.89
+thesis/5_Results.tex:44:34.92
+thesis/5_Results.tex:44:33.86
+thesis/5_Results.tex:45:1.06
+thesis/5_Results.tex:45:95
+thesis/5_Results.tex:45:1.24
+thesis/5_Results.tex:46:95
+thesis/5_Results.tex:46:69.08
+thesis/5_Results.tex:53:0.75
+thesis/5_Results.tex:54:16.01
+thesis/5_Results.tex:54:15.26
+thesis/5_Results.tex:54:0.52
+thesis/5_Results.tex:55:33.47
+thesis/5_Results.tex:55:32.95
+thesis/5_Results.tex:55:0.92
+thesis/5_Results.tex:57:32.03
+thesis/5_Results.tex:57:32.95
+thesis/5_Results.tex:68:32.06
+thesis/5_Results.tex:69:31.16
+thesis/5_Results.tex:69:0.89
+thesis/5_Results.tex:71:31.99
+thesis/5_Results.tex:72:31.19
+thesis/5_Results.tex:72:0.80
+thesis/5_Results.tex:73:0.41
+thesis/5_Results.tex:74:1.30
+thesis/5_Results.tex:75:4.1
+thesis/5_Results.tex:79:35.60
+thesis/5_Results.tex:82:54
+thesis/5_Results.tex:95:15.26
+thesis/5_Results.tex:96:22.68
+thesis/5_Results.tex:96:7.42
+thesis/5_Results.tex:124:16.04
+thesis/5_Results.tex:130:96.4
+thesis/5_Results.tex:131:0
+thesis/5_Results.tex:132:73.3
+thesis/5_Results.tex:133:0
+thesis/5_Results.tex:138:16.04
+thesis/5_Results.tex:138:33.47
+thesis/5_Results.tex:139:17.43
+thesis/5_Results.tex:139:73.6
+thesis/5_Results.tex:141:73.3
+thesis/5_Results.tex:141:29.28
+thesis/5_Results.tex:141:13.24
+thesis/5_Results.tex:142:95
+thesis/5_Results.tex:143:33.47
+thesis/5_Results.tex:143:4.19
+thesis/5_Results.tex:151:10.5
+thesis/5_Results.tex:155:98.52
+thesis/5_Results.tex:185:16.04
+thesis/5_Results.tex:199:95
+thesis/5_Results.tex:199:95
+thesis/5_Results.tex:202:73
+thesis/5_Results.tex:202:0
+thesis/5_Results.tex:221:31.0
+thesis/5_Results.tex:221:31.2
+thesis/5_Results.tex:221:2
+thesis/5_Results.tex:222:64.5
+thesis/5_Results.tex:222:48
+thesis/5_Results.tex:223:4
+thesis/5_Results.tex:225:0.1
+thesis/5_Results.tex:226:47
+thesis/5_Results.tex:226:51.6
+thesis/5_Results.tex:230:31.83
+thesis/5_Results.tex:230:30.96
+thesis/5_Results.tex:232:13.0
+thesis/5_Results.tex:234:32.09
+thesis/5_Results.tex:235:31.22
+thesis/5_Results.tex:235:0.87
+thesis/5_Results.tex:236:95
+thesis/5_Results.tex:242:32.03
+thesis/5_Results.tex:242:31.99
+thesis/5_Results.tex:243:0.04
+thesis/6_Discussion.tex:7:174.34
+thesis/6_Discussion.tex:8:98.52
+thesis/6_Discussion.tex:9:16.0
+thesis/6_Discussion.tex:9:33.5
+thesis/6_Discussion.tex:11:33.9
+thesis/6_Discussion.tex:11:68.92
+thesis/6_Discussion.tex:20:16.0
+thesis/6_Discussion.tex:21:26.5
+thesis/6_Discussion.tex:21:33.5
+thesis/6_Discussion.tex:23:73
+thesis/6_Discussion.tex:24:29.3
+thesis/6_Discussion.tex:26:13.2
+thesis/6_Discussion.tex:27:4.2
+thesis/6_Discussion.tex:30:73
+thesis/6_Discussion.tex:32:1
+thesis/6_Discussion.tex:33:10.5
+thesis/6_Discussion.tex:39:81
+thesis/6_Discussion.tex:51:54
+thesis/6_Discussion.tex:53:35.60
+thesis/6_Discussion.tex:53:4.43
+thesis/6_Discussion.tex:53:31.16
+thesis/6_Discussion.tex:55:0.89
+thesis/6_Discussion.tex:70:4
+thesis/6_Discussion.tex:72:15.26
+thesis/6_Discussion.tex:72:22.68
+thesis/6_Discussion.tex:73:7.4
+thesis/6_Discussion.tex:81:32.03
+thesis/6_Discussion.tex:82:32.95
+thesis/6_Discussion.tex:83:0.75
+thesis/6_Discussion.tex:91:98.52
+thesis/6_Discussion.tex:91:32.15
+thesis/6_Discussion.tex:105:2
+thesis/6_Discussion.tex:106:48
+thesis/6_Discussion.tex:108:0.1
+thesis/6_Discussion.tex:109:47
+thesis/6_Discussion.tex:154:16
+thesis/6_Discussion.tex:154:33
+thesis/6_Discussion.tex:154:174
+thesis/6_Discussion.tex:155:98.5
+thesis/6_Discussion.tex:157:33.9
+thesis/6_Discussion.tex:157:68.9
+thesis/6_Discussion.tex:159:4
+thesis/6_Discussion.tex:161:0.9
+thesis/3_Related_work.tex:45:4.25
+thesis/3_Related_work.tex:45:3.32
+thesis/3_Related_work.tex:58:31.71
+thesis/3_Related_work.tex:58:75.75
+thesis/3_Related_work.tex:58:59.40
+thesis/3_Related_work.tex:60:29.19
+thesis/4_Methodology copy.tex:233:58.5
+thesis/4_Methodology copy.tex:233:83.3
+thesis/4_Methodology copy.tex:234:62.4
+thesis/4_Methodology copy.tex:234:84.2
+thesis/4_Methodology copy.tex:244:96.4
+thesis/4_Methodology copy.tex:267:96.4
+thesis/4_Methodology copy.tex:268:0
+thesis/4_Methodology copy.tex:269:0
+thesis/4_Methodology copy.tex:287:24
+thesis/4_Methodology copy.tex:287:22
+thesis/4_Methodology copy.tex:287:19
+thesis/4_Methodology copy.tex:287:19
+thesis/4_Methodology copy.tex:287:16
+thesis/4_Methodology copy.tex:288:27
+thesis/4_Methodology copy.tex:288:18
+thesis/4_Methodology copy.tex:288:17
+thesis/4_Methodology copy.tex:288:14
+thesis/4_Methodology copy.tex:288:24
+thesis/4_Methodology copy.tex:300:49.7
+thesis/4_Methodology copy.tex:310:0.53
+thesis/4_Methodology copy.tex:313:73.6
+thesis/4_Methodology copy.tex:357:11.8
+thesis/4_Methodology copy.tex:358:24
+thesis/4_Methodology copy.tex:364:67
+thesis/4_Methodology copy.tex:367:13.0
+thesis/4_Methodology copy.tex:375:73.6
+thesis/4_Methodology copy.tex:382:73.3
+thesis/4_Methodology copy.tex:384:96.4
+thesis/4_Methodology copy.tex:385:0
+thesis/4_Methodology copy.tex:424:4.8
+thesis/4_Methodology copy.tex:429:22.7
+thesis/4_Methodology copy.tex:460:4.1
+thesis/4_Methodology copy.tex:474:54.0

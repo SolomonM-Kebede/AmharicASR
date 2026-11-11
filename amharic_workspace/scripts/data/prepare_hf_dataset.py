@@ -2,6 +2,7 @@ import os
 import zipfile
 import shutil
 import pandas as pd
+from common import config as cfg  # must load before transformers/datasets
 from datasets import load_dataset, Audio
 from tqdm import tqdm
 

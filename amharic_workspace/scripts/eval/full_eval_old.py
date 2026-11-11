@@ -1,3 +1,5 @@
+from data.normalize import normalize_amharic
+from common import config as cfg  # must load before transformers/datasets
 import torch
 import evaluate
 from datasets import load_from_disk

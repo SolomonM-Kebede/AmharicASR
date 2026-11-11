@@ -1,8 +1,9 @@
 
 import os, collections
 import pandas as pd
+from common import config as cfg 
 from datasets import load_dataset, load_from_disk, concatenate_datasets, DatasetDict, Audio
-from normalize import normalize_amharic
+from data.normalize import normalize_amharic
 
 BASE = "/home/stud_homes/s8345520/AmharicASR/amharic_workspace"
 HF_CACHE = "/home/stud_homes/s8345520/AmharicASR/hf_cache"
