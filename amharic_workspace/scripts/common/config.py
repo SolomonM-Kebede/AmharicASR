@@ -50,6 +50,11 @@ PHASE1_MERGED = dataset_path(
 D1_CACHE = dataset_path(
     "AMHARIC_D1_CACHE", DATA_DIR / "phase2_leyu" / "dataset_cache_si_size_matched")
 
+TI_CACHE = dataset_path(
+    "AMHARIC_TI_CACHE", DATA_DIR / "phase2_leyu" / "dataset_cache_text_independent")
+PHASE1_STD_TEST = dataset_path(
+    "AMHARIC_PHASE1_STD_TEST", DATA_DIR / "phase1_curriculum" / "dataset_cache_rebuilt")
+
 # Outputs (created by the scripts)
 CACHE_DIR = output_path("AMHARIC_CACHE_DIR", Path.home() / "AmharicASR" / "clean_cache")
 CHECKPOINT_DIR = output_path("AMHARIC_CHECKPOINT_DIR", DATA_DIR / "checkpoints")
@@ -59,10 +64,12 @@ LOG_DIR = output_path("AMHARIC_LOG_DIR", DATA_DIR / "slurm_logs")
 WHISPER_MODEL = "openai/whisper-large-v3"
 SEED = 42
 MAX_LABEL_LENGTH = 448
+GOOGLE_MAX_SYNC_SECONDS = 55   # sending rule for Google's synchronous API (API limit: 60 s)
 
 # Hugging Face: set before transformers or datasets load.
 # HF_HOME is the cache root; hub/ inside it holds the Whisper snapshot.
 HF_HOME = CACHE_DIR
+os.environ["HF_DATASETS_CACHE"] = str(HF_HOME)
 os.environ["HF_HOME"] = str(HF_HOME)
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
