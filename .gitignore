@@ -84,3 +84,5 @@ scripts/diagnostics/diagnose_generation_diff.py
 scripts/diagnostics/diagnose_random_samples.py
 diagnose_samples.json
 amharic_workspace/archive/
+amharic_workspace/scripts/diagnostics/diff_test.py
+amharic_workspace/diff_test.py
