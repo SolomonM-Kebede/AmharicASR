@@ -1,0 +1,32 @@
+{
+  "gojjam": {
+    "n_samples": 654,
+    "wer": 25.52,
+    "cer": 9.18
+  },
+  "gonder": {
+    "n_samples": 1237,
+    "wer": 14.22,
+    "cer": 4.89
+  },
+  "wello": {
+    "n_samples": 836,
+    "wer": 16.61,
+    "cer": 6.13
+  },
+  "shewa": {
+    "n_samples": 1101,
+    "wer": 11.84,
+    "cer": 4.41
+  },
+  "addis ababa": {
+    "n_samples": 760,
+    "wer": 12.99,
+    "cer": 4.26
+  },
+  "OVERALL": {
+    "n_samples": 4588,
+    "wer": 15.26,
+    "cer": 5.43
+  }
+}
