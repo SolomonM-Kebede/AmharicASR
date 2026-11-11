@@ -86,3 +86,4 @@ diagnose_samples.json
 amharic_workspace/archive/
 amharic_workspace/scripts/diagnostics/diff_test.py
 amharic_workspace/diff_test.py
+amharic_workspace/scripts/app/hf_local_models/
