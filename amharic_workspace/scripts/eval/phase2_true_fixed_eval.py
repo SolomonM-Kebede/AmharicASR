@@ -1,198 +1,177 @@
-from data.normalize import normalize_amharic
+"""Phase 2 (Leyu-only) evaluation of the merged LoRA model on the SI test split.
+
+This is the record of the run that produced the 16.01% WER reported for A2.
+Settings, as they were in that run:
+  - Model: phase2_leyu/models/phase2_final_merged (LoRA merged).
+  - Weights: float32, as loaded (torch_dtype=float32).
+  - Trainer: bf16=True, so predictions were computed under bf16 autocast.
+    The label for this result is "float32 weights, bf16 autocast".
+  - Decoding: beam 5, max_length 448. No generation_max_length is set on the
+    trainer, so the model's generation_config governs. An earlier version set
+    225 on the trainer, which overrode it; that version is not reported.
+  - Test set: 4,588 utterances from the SI test split.
+
+The SI training cache is not retained, so this script cannot be rerun from the
+repository. Its saved summary and log are in results/summaries/.
+
+Writes results/persample/<name>_persample.jsonl and <name>.json. Existing files
+are kept unless --overwrite is given. Run from the workspace root after sourcing
+env.amh.sh.
 """
-Amharic ASR — Phase 2 (Leyu-only) FINAL eval, TRUE fix
-========================================================
-Corrects a leftover bug in the previous "fixed_decode" pipeline: model.generation_config
-was correctly in-place-mutated to max_length=448, but Seq2SeqTrainingArguments still had
-generation_max_length=225 set — and Trainer passes that as an explicit gen_kwarg, which
-overrides generation_config per HF's own priority order (explicit kwargs > generation_config
-> defaults). So every prior "corrected" Phase 2 number was still silently truncating at 225
-tokens. This version removes generation_max_length entirely and lets the in-place-mutated
-generation_config govern, matching the pattern already verified correct for Phase 2b.
-"""
+from common import config as cfg  # sets cache and offline flags; keep first
 
-import os
-
-CUSTOM_CACHE = "~/AmharicASR/hf_cache"
-os.makedirs(CUSTOM_CACHE, exist_ok=True)
-os.environ["HF_HOME"] = CUSTOM_CACHE
-os.environ["HF_DATASETS_CACHE"] = CUSTOM_CACHE
-os.environ["HF_HUB_CACHE"] = CUSTOM_CACHE
-os.environ["HF_MODULES_CACHE"] = CUSTOM_CACHE
-os.environ["HF_METRICS_CACHE"] = CUSTOM_CACHE
-os.environ["HF_EVALUATE_CACHE"] = CUSTOM_CACHE
-os.environ["HF_HUB_OFFLINE"] = "1"
-os.environ["TRANSFORMERS_OFFLINE"] = "1"
-
+import argparse
 import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, List
 
-from common import config as cfg  # must load before transformers/datasets
+import evaluate
 import torch
 from datasets import load_from_disk
 from transformers import (
-    WhisperProcessor,
-    WhisperForConditionalGeneration,
-    Seq2SeqTrainingArguments,
     Seq2SeqTrainer,
+    Seq2SeqTrainingArguments,
+    WhisperForConditionalGeneration,
+    WhisperProcessor,
 )
 
-print(f"torch  : {torch.__version__}")
-if not torch.cuda.is_available():
-    raise RuntimeError("No GPU found — aborting.")
-print(f"GPU    : {torch.cuda.get_device_name(0)}")
+from data.normalize import normalize_amharic
 
-BASE_DIR   = "~/AmharicASR/amharic_workspace"
-PHASE2_DIR = os.path.join(BASE_DIR, "phase2_leyu")
-MERGED_DIR = os.path.join(PHASE2_DIR, "models", "phase2_final_merged")
-
-DATASET_VERSION = os.environ.get("DATASET_VERSION", "2026-08-expanded-spkindep")
-LEYU_CACHE      = os.path.join(PHASE2_DIR, f"dataset_cache_{DATASET_VERSION}")
-RESULTS_DIR     = os.path.join(PHASE2_DIR, "results")
-os.makedirs(RESULTS_DIR, exist_ok=True)
-EVAL_BATCH_SIZE = int(os.environ.get("EVAL_BATCH_SIZE", 8))
-NUM_BEAMS       = int(os.environ.get("NUM_BEAMS", 5))
-DIALECT_NAMES   = ["gojjam", "gonder", "wello", "shewa", "addis ababa"]
-
-RESULTS_PATH = os.path.join(RESULTS_DIR, f"phase2_dialect_results_{DATASET_VERSION}_TRUE_fixed.json")
-
-AMHARIC_CHAR_MAP = {
-    "ሐ": "ሀ", "ሑ": "ሁ", "ሒ": "ሂ", "ሓ": "ሃ", "ሔ": "ሄ", "ሕ": "ህ", "ሖ": "ሆ",
-    "ኀ": "ሀ", "ኁ": "ሁ", "ኂ": "ሂ", "ኃ": "ሃ", "ኄ": "ሄ", "ኅ": "ህ", "ኆ": "ሆ",
-    "ዐ": "አ", "ዑ": "ኡ", "ዒ": "ኢ", "ዓ": "ኣ", "ዔ": "ኤ", "ዕ": "እ", "ዖ": "ኦ",
-    "ሠ": "ሰ", "ሡ": "ሱ", "ሢ": "ሲ", "ሣ": "ሳ", "ሤ": "ሴ", "ሥ": "ስ", "ሦ": "ሶ",
-    "ፀ": "ጸ", "ፁ": "ጹ", "ፂ": "ጺ", "ፃ": "ጻ", "ፄ": "ጼ", "ፅ": "ጽ", "ፆ": "ጾ",
-}
-PUNCT = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~።፣፤፥፦'
-
-def normalize_amharic(text: str) -> str:
-    for src, tgt in AMHARIC_CHAR_MAP.items():
-        text = text.replace(src, tgt)
-    for p in PUNCT:
-        text = text.replace(p, " ")
-    return " ".join(text.split()).strip()
+DIALECTS = ["gojjam", "gonder", "wello", "shewa", "addis ababa"]
+EXPECTED_TEST = 4588
+NUM_BEAMS = 5
+DEFAULT_MODEL = cfg.DATA_DIR / "phase2_leyu" / "models" / "phase2_final_merged"
 
 
-print(f"\nLoading processor/model from {MERGED_DIR} ...")
-processor = WhisperProcessor.from_pretrained(MERGED_DIR, language="amharic", task="transcribe")
-DECODER_START_TOKEN_ID = processor.tokenizer.convert_tokens_to_ids("<|startoftranscript|>")
-
-model = WhisperForConditionalGeneration.from_pretrained(MERGED_DIR, torch_dtype=torch.float32)
-model = model.to("cuda").eval()
-
-forced_ids = processor.get_decoder_prompt_ids(language="amharic", task="transcribe", no_timestamps=True)
-
-# in-place mutation only — no wholesale GenerationConfig(...) construction anywhere
-model.generation_config.forced_decoder_ids = forced_ids
-model.generation_config.max_length = 448
-model.generation_config.max_new_tokens = None
-model.generation_config.num_beams = NUM_BEAMS
-model.generation_config.use_cache = True
-
-print(f"\nLoading cached test split from {LEYU_CACHE} ...")
-cached = load_from_disk(LEYU_CACHE)
-test_dataset = cached["test"]
-print(f"  full test set: {len(test_dataset):,} examples")
+def parse_args():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--model-dir", type=Path, default=DEFAULT_MODEL)
+    ap.add_argument("--name", default="a2_float32", help="output prefix")
+    ap.add_argument("--batch-size", type=int, default=8)
+    ap.add_argument("--overwrite", action="store_true")
+    return ap.parse_args()
 
 
 @dataclass
-class DataCollatorSpeechSeq2SeqWithPadding:
+class Collator:
     processor: Any
     decoder_start_token_id: int
 
     def __call__(self, features: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
-        input_features = [{"input_features": f["input_features"]} for f in features]
-        label_features = [{"input_ids": f["labels"]}              for f in features]
-        batch  = self.processor.feature_extractor.pad(input_features, return_tensors="pt")
-        labels = self.processor.tokenizer.pad(label_features, return_tensors="pt")
-        lids = labels["input_ids"].masked_fill(labels.attention_mask.ne(1), -100)
-        if (lids[:, 0] == self.decoder_start_token_id).all().cpu().item():
-            lids = lids[:, 1:]
-        batch["labels"] = lids
-        return batch
-
-data_collator = DataCollatorSpeechSeq2SeqWithPadding(
-    processor=processor, decoder_start_token_id=DECODER_START_TOKEN_ID
-)
+        audio = self.processor.feature_extractor.pad(
+            [{"input_features": f["input_features"]} for f in features], return_tensors="pt")
+        labels = self.processor.tokenizer.pad(
+            [{"input_ids": f["labels"]} for f in features], return_tensors="pt")
+        ids = labels["input_ids"].masked_fill(labels.attention_mask.ne(1), -100)
+        if (ids[:, 0] == self.decoder_start_token_id).all().item():
+            ids = ids[:, 1:]
+        audio["labels"] = ids
+        return audio
 
 
-class SafeWhisperTrainer(Seq2SeqTrainer):
+class PredictOnlyTrainer(Seq2SeqTrainer):
+    """Batched generation only. Casts inputs to the model's dtype, as in the original run."""
+
     def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
-        labels         = inputs.pop("labels")
-        input_features = inputs.pop("input_features")
-        inputs.clear()
-        outputs = model(input_features=input_features, labels=labels)
-        return (outputs.loss, outputs) if return_outputs else outputs.loss
+        raise RuntimeError("loss is not used in this evaluation")
 
-    def prediction_step(self, model, inputs, prediction_loss_only: bool, ignore_keys=None):
-        inputs.pop("decoder_input_ids",     None)
-        inputs.pop("decoder_inputs_embeds", None)
-        inputs.pop("input_ids",             None)
-        inputs.pop("attention_mask",        None)
-        inputs.pop("dialect",               None)
-        if "input_features" in inputs:
-            inputs["input_features"] = inputs["input_features"].to(
-                dtype=next(model.parameters()).dtype
-            )
+    def prediction_step(self, model, inputs, prediction_loss_only, ignore_keys=None):
+        for key in ("decoder_input_ids", "decoder_inputs_embeds", "input_ids",
+                    "attention_mask", "dialect", "orig_idx"):
+            inputs.pop(key, None)
+        inputs["input_features"] = inputs["input_features"].to(dtype=next(model.parameters()).dtype)
         return super().prediction_step(model, inputs, prediction_loss_only, ignore_keys)
 
 
-eval_args = Seq2SeqTrainingArguments(
-    output_dir                 = "/tmp/eval_scratch_phase2_true_fixed",
-    per_device_eval_batch_size = EVAL_BATCH_SIZE,
-    predict_with_generate      = True,
-    # generation_max_length intentionally NOT set — model.generation_config.max_length=448 governs
-    bf16                       = True,
-    fp16                       = False,
-    report_to                  = ["none"],
-    remove_unused_columns      = False,
-)
+def main():
+    args = parse_args()
+    model_dir = cfg.require(args.model_dir)
+    persample_path = cfg.PERSAMPLE / f"{args.name}_persample.jsonl"
+    summary_path = cfg.PERSAMPLE / f"{args.name}.json"
+    for p in (persample_path, summary_path):
+        if p.exists() and not args.overwrite:
+            raise SystemExit(f"{p} exists; pass --overwrite or choose --name")
 
-trainer = SafeWhisperTrainer(model=model, args=eval_args, data_collator=data_collator)
+    test = load_from_disk(str(cfg.require(cfg.LEYU_SI_CACHE)))["test"]
+    if len(test) != EXPECTED_TEST:
+        raise SystemExit(f"SI test split has {len(test)} utterances, expected {EXPECTED_TEST}")
+    test = test.add_column("orig_idx", list(range(len(test))))
 
-dialect_results = {}
-all_pred, all_ref = [], []
+    processor = WhisperProcessor.from_pretrained(str(model_dir), language="amharic", task="transcribe")
+    forced_ids = processor.get_decoder_prompt_ids(language="amharic", task="transcribe", no_timestamps=True)
+    decoder_start = processor.tokenizer.convert_tokens_to_ids("<|startoftranscript|>")
 
-for d_name in DIALECT_NAMES:
-    d_test = test_dataset.filter(lambda x: x["dialect"] == d_name)
-    if len(d_test) == 0:
-        continue
-    print(f"\nRunning {d_name} (n={len(d_test)}) ...")
-    result = trainer.predict(d_test)
-    label_ids = result.label_ids.copy()
-    label_ids[label_ids == -100] = processor.tokenizer.pad_token_id
-    pred_ids = result.predictions.copy()
-    pred_ids[pred_ids == -100] = processor.tokenizer.pad_token_id
-    pred_str  = [normalize_amharic(s) for s in processor.tokenizer.batch_decode(pred_ids, skip_special_tokens=True)]
-    label_str = [normalize_amharic(s) for s in processor.tokenizer.batch_decode(label_ids, skip_special_tokens=True)]
+    # Weights are float32 as loaded. bf16=True below makes the trainer run the
+    # forward pass under bf16 autocast, so the reported label must say so.
+    model = WhisperForConditionalGeneration.from_pretrained(
+        str(model_dir), torch_dtype=torch.float32).to("cuda").eval()
+    gc = model.generation_config
+    gc.forced_decoder_ids = forced_ids
+    gc.max_length = cfg.MAX_LABEL_LENGTH
+    gc.max_new_tokens = None
+    gc.num_beams = NUM_BEAMS
+    gc.use_cache = True
 
-    import evaluate as _eval
-    wer = _eval.load("wer").compute(predictions=pred_str, references=label_str) * 100
-    cer = _eval.load("cer").compute(predictions=pred_str, references=label_str) * 100
-    dialect_results[d_name] = {"n_samples": len(d_test), "wer": round(wer, 2), "cer": round(cer, 2)}
-    print(f"  {d_name:15s}  n={len(d_test):4d}  WER={wer:.2f}%  CER={cer:.2f}%")
+    trainer = PredictOnlyTrainer(
+        model=model,
+        args=Seq2SeqTrainingArguments(
+            output_dir=str(cfg.CHECKPOINT_DIR / "eval_scratch" / args.name),
+            per_device_eval_batch_size=args.batch_size,
+            predict_with_generate=True,
+            # generation_max_length deliberately not set: the model's max_length governs.
+            bf16=True, fp16=False,
+            report_to=["none"],
+            remove_unused_columns=False,
+        ),
+        data_collator=Collator(processor, decoder_start),
+    )
 
-    all_pred.extend(pred_str)
-    all_ref.extend(label_str)
+    wer_metric, cer_metric = evaluate.load("wer"), evaluate.load("cer")
+    dialects = test["dialect"]
+    summary, all_refs, all_hyps = {}, [], []
+    pad = processor.tokenizer.pad_token_id
 
-    # save incrementally after each dialect — don't lose progress to a walltime kill again
-    with open(RESULTS_PATH, "w", encoding="utf-8") as f:
-        json.dump(dialect_results, f, ensure_ascii=False, indent=2)
+    with open(persample_path, "w", encoding="utf-8") as out:
+        for dialect in DIALECTS:
+            idx = [i for i, d in enumerate(dialects) if d == dialect]
+            if not idx:
+                continue
+            subset = test.select(idx)
+            pred = trainer.predict(subset)
+            pred_ids = pred.predictions.copy()
+            pred_ids[pred_ids == -100] = pad
+            label_ids = pred.label_ids.copy()
+            label_ids[label_ids == -100] = pad
+            hyps = [normalize_amharic(s) for s in processor.tokenizer.batch_decode(pred_ids, skip_special_tokens=True)]
+            refs = [normalize_amharic(s) for s in processor.tokenizer.batch_decode(label_ids, skip_special_tokens=True)]
 
-import evaluate as _eval
-overall_wer = _eval.load("wer").compute(predictions=all_pred, references=all_ref) * 100
-overall_cer = _eval.load("cer").compute(predictions=all_pred, references=all_ref) * 100
-dialect_results["OVERALL"] = {"n_samples": len(all_pred), "wer": round(overall_wer, 2), "cer": round(overall_cer, 2)}
+            for orig, r, h in zip(subset["orig_idx"], refs, hyps):
+                out.write(json.dumps({"orig_idx": int(orig), "dialect": dialect,
+                                      "reference": r, "prediction": h}, ensure_ascii=False) + "\n")
 
-print(f"\n{'='*60}")
-print(f"  PHASE 2 (LEYU-ONLY) — TRUE FINAL RESULTS")
-print(f"{'='*60}")
-for d, m in dialect_results.items():
-    marker = " ←" if d == "OVERALL" else ""
-    print(f"  {d:<18} n={m['n_samples']:>5}  WER={m['wer']:>6.2f}%  CER={m['cer']:>6.2f}%{marker}")
-print(f"{'='*60}")
+            wer = wer_metric.compute(predictions=hyps, references=refs) * 100
+            cer = cer_metric.compute(predictions=hyps, references=refs) * 100
+            summary[dialect] = {"n": len(subset), "wer": round(wer, 2), "cer": round(cer, 2)}
+            print(f"{dialect:12s} n={len(subset):5d}  WER={wer:6.2f}%  CER={cer:6.2f}%")
+            all_refs += refs
+            all_hyps += hyps
+            summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
 
-with open(RESULTS_PATH, "w", encoding="utf-8") as f:
-    json.dump(dialect_results, f, ensure_ascii=False, indent=2)
-print(f"\nResults saved to {RESULTS_PATH}")
+    if len(all_refs) != EXPECTED_TEST:
+        raise SystemExit(f"scored {len(all_refs)} utterances, expected {EXPECTED_TEST}")
+    wer = wer_metric.compute(predictions=all_hyps, references=all_refs) * 100
+    cer = cer_metric.compute(predictions=all_hyps, references=all_refs) * 100
+    summary["OVERALL"] = {
+        "n": len(all_refs), "wer": round(wer, 2), "cer": round(cer, 2),
+        "weights": "float32 as loaded", "inference": "bf16 autocast (bf16=True)",
+        "beams": NUM_BEAMS, "max_length": cfg.MAX_LABEL_LENGTH,
+        "model_dir": str(model_dir), "test_split": "SI test split",
+    }
+    summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"{'OVERALL':12s} n={len(all_refs):5d}  WER={wer:6.2f}%  CER={cer:6.2f}%")
+    print(f"saved {persample_path}\nsaved {summary_path}")
+
+
+if __name__ == "__main__":
+    main()
