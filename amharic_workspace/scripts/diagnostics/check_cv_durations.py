@@ -1,31 +1,36 @@
+"""Duration check for the Common Voice training split used in this thesis.
+
+Reports the clip count, speaker count, and audio hours for train.tsv, which
+the Corpora table lists as 553 clips and 0.93 hours, and for the whole release.
+Run from the workspace root after sourcing env.amh.sh.
+"""
+from common import config as cfg  # keeps path handling and env setup in one place
 
 import pandas as pd
-from common import config as cfg  # must load before transformers/datasets
-import librosa
-from config import CV_DIR
 
-def durations(tsv_name):
-    df = pd.read_csv(CV_DIR / tsv_name, sep="\t", usecols=["path"])
-    secs, missing = [], []
-    for p in df["path"]:
-        f = CV_DIR / "clips" / p
-        if f.exists():
-            secs.append(librosa.get_duration(path=str(f)))
-        else:
-            missing.append(p)
-    return secs, missing
+TRAIN_TSV = cfg.require(cfg.CV_DIR / "train.tsv")
+DURATIONS_TSV = cfg.require(cfg.CV_DIR / "clip_durations.tsv")
+MS_PER_HOUR = 3_600_000
 
-def report(name, secs, missing):
-    total = sum(secs)
-    print(f"{name}: {len(secs)} clips found, {len(missing)} missing")
-    print(f"  total   {total:9.1f} s = {total / 3600:.3f} h")
-    print(f"  mean    {total / len(secs):.3f} s   min {min(secs):.2f}   max {max(secs):.2f}")
 
-# Control: datasheet says validated = 1,070 clips, 1.88 h, mean 6.345 s
-val_secs, val_missing = durations("validated.tsv")
-report("validated.tsv (control)", val_secs, val_missing)
+def hours(duration_ms):
+    return duration_ms.sum() / MS_PER_HOUR
 
-# The number in question: train split
-tr_secs, tr_missing = durations("train.tsv")
-report("train.tsv", tr_secs, tr_missing)
-print(f"  thesis claims 0.93 h; 553 x 6.345 s would give {553 * 6.345 / 3600:.3f} h")
+
+train = pd.read_csv(TRAIN_TSV, sep="\t", quoting=3, usecols=["path", "client_id"])
+durations = (
+    pd.read_csv(DURATIONS_TSV, sep="\t")
+    .rename(columns={"clip": "path", "duration[ms]": "duration_ms"})
+)
+
+print(f"clip_durations entries: {len(durations):,}"
+      f" | duplicated clip names: {durations.path.duplicated().sum():,}")
+
+merged = train.merge(durations, on="path", how="left")
+missing = int(merged.duration_ms.isna().sum())
+
+print(f"train.tsv clips: {len(train):,}  speakers: {train.client_id.nunique()}")
+print(f"with duration: {len(merged) - missing:,}  missing: {missing:,}")
+print(f"train audio: {hours(merged.duration_ms.dropna()):.2f} h (Corpora table: 0.93 h)")
+print(f"mean clip length: {merged.duration_ms.mean() / 1000:.1f} s")
+print(f"clip_durations.tsv (all clips): {len(durations):,} clips, {hours(durations.duration_ms):.2f} h")
