@@ -34,10 +34,8 @@ from pathlib import Path
 import numpy as np
 from datasets import load_from_disk
 
-from common.bootstrap_utils import bootstrap_delta, cache_ok, load, word_errors
+from common.bootstrap_utils import B, SEED, bootstrap_delta, cache_ok, load, pair, word_errors
 
-B = 10_000
-SEED = 42
 SUBSET_SIZE = 688
 VAL_OVERLAP_EXPECTED = 596
 EXPECTED = {
@@ -97,50 +95,6 @@ def val_overlap_exclusions(cache, test):
         raise SystemExit(f"{len(excluded)} test utterances overlap the validation sample, "
                          f"expected {VAL_OVERLAP_EXPECTED}")
     return excluded
-
-
-def pair(X, Y, test, subset=None, mode=None, exclude=None):
-    """Collect matched utterances in sorted index order.
-
-    subset is None for no subset filter. Otherwise mode "in" keeps only members of
-    subset and mode "out" keeps only non-members. exclude is a set of test positions
-    to drop. The order matters: resampling draws positions in this order, so
-    changing it changes the intervals.
-    """
-    data = {"ex": [], "ey": [], "n": [], "spk": []}
-    stats = {"matched": 0, "ref_mismatch": 0, "empty_ref": 0, "cache_mismatch": 0}
-    examples = []
-
-    for i in sorted(set(X) & set(Y)):
-        ref = X[i]["reference"]
-        if ref != Y[i]["reference"]:
-            stats["ref_mismatch"] += 1
-            continue
-        if not ref.strip():
-            stats["empty_ref"] += 1
-            continue
-        if subset is not None and (i in subset) != (mode == "in"):
-            continue
-        if exclude is not None and i in exclude:
-            continue
-
-        row = test[i]
-        if not cache_ok(row, ref):
-            stats["cache_mismatch"] += 1
-            if len(examples) < 3:
-                examples.append((i, ref[-40:], row["norm_text"][:80]))
-            continue
-
-        e_x, n = word_errors(ref, X[i]["prediction"])
-        e_y, _ = word_errors(ref, Y[i]["prediction"])
-        data["ex"].append(e_x)
-        data["ey"].append(e_y)
-        data["n"].append(n)
-        data["spk"].append(row["speaker_id"])
-        stats["matched"] += 1
-
-    return data, stats, examples
-
 
 def main():
     args = parse_args()

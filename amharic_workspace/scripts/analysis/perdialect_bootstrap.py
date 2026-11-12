@@ -1,52 +1,77 @@
+"""Per-dialect paired comparison of two systems on the Joint test set.
+
+Uses the pairing, counting and resampling of run_bootstrap.py (both from
+common/bootstrap_utils.py). Each dialect is resampled with its own generator,
+seeded with SEED, so a dialect's interval does not depend on the other dialects
+or on their order. Utterance-level intervals only.
+
+Printed delta = WER_X - WER_Y (positive: Y has the lower WER).
+Defaults compare C2 (LoRA, bf16) with C4b (full fine-tuning, bf16).
+Run from the workspace root after sourcing env.amh.sh.
 """
-Per-dialect paired comparison, C2 (LoRA) vs C4b (full FT), bf16 evaluation.
-Printed delta = WER_X - WER_Y (positive: C4b better).
-"""
-import numpy as np
 from common import config as cfg  # must load before transformers/datasets
+
+import argparse
+import json
+from pathlib import Path
+
+import numpy as np
 from datasets import load_from_disk
-from common.bootstrap_utils import load, word_errors, cache_ok, bootstrap_delta
 
-X_JSONL = "results/persample/results_raw_persample.jsonl"   # C2, LoRA
-Y_JSONL = "results/persample/c4b_bfloat16_persample.jsonl"               # C4b, full FT
-TEST_CACHE = "phase2_leyu/dataset_cache_joint_independent"
-B, SEED = 10_000, 42
+from common.bootstrap_utils import B, SEED, bootstrap_delta, load, pair
+
 DIALECTS = ["gojjam", "gonder", "wello", "shewa", "addis ababa"]
+EXPECTED = {"gojjam": 654, "gonder": 1237, "wello": 836, "shewa": 1101, "addis ababa": 760}
 
-test = load_from_disk(TEST_CACHE)["test"]
-X, Y = load(X_JSONL), load(Y_JSONL)
 
-rows = {d: {"ex": [], "ey": [], "n": [], "spk": []} for d in DIALECTS}
-seen = set()
-for i in sorted(set(X) & set(Y)):
-    ref = X[i]["reference"]
-    if ref != Y[i]["reference"] or not ref.strip():
-        continue
-    row = test[i]
-    if not cache_ok(row, ref):
-        raise SystemExit(f"cache mismatch at idx {i}; pairing invalid")
-    d = row["dialect"].lower()
-    if d not in rows:
-        raise SystemExit(f"unexpected dialect label {d!r} at idx {i}")
-    e_x, N = word_errors(ref, X[i]["prediction"])
-    e_y, _ = word_errors(ref, Y[i]["prediction"])
-    r = rows[d]
-    r["ex"].append(e_x); r["ey"].append(e_y); r["n"].append(N); r["spk"].append(row["speaker_id"])
-    seen.add(i)
+def parse_args():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--x", default="results_raw_persample.jsonl", help="first system (default: C2)")
+    ap.add_argument("--y", default="c4b_bfloat16_persample.jsonl", help="second system (default: C4b)")
+    ap.add_argument("--json", type=Path, help="also write the results to this JSON file")
+    return ap.parse_args()
 
-print(f"paired utterances: {len(seen)} of {len(X)}")
-rng = np.random.default_rng(SEED)
 
-print(f"\n{'dialect':12s} {'utt':>5s} {'spk':>4s} {'WER_C2':>8s} {'WER_C4b':>8s} {'delta':>7s}  utterance 95% CI")
-for d in DIALECTS:
-    r = rows[d]
-    ex, ey, n = np.array(r["ex"], float), np.array(r["ey"], float), np.array(r["n"], float)
-    if len(n) == 0:
-        print(f"{d:12s} no utterances")
-        continue
-    wx = 100 * ex.sum() / n.sum()
-    wy = 100 * ey.sum() / n.sum()
-    d_point = wx - wy
-    dist = bootstrap_delta(ex, ey, n, rng, B)
-    lo, hi = np.percentile(dist, [2.5, 97.5])
-    print(f"{d:12s} {len(n):5d} {len(set(r['spk'])):4d} {wx:8.2f} {wy:8.2f} {d_point:7.2f}  [{lo:.2f}, {hi:.2f}]")
+def main():
+    args = parse_args()
+    x_path = cfg.require(cfg.PERSAMPLE / args.x)
+    y_path = cfg.require(cfg.PERSAMPLE / args.y)
+    test = load_from_disk(str(cfg.require(cfg.LEYU_JOINT_CACHE)))["test"]
+    dialect_of = test["dialect"]
+    X, Y = load(x_path), load(y_path)
+
+    print(f"{x_path.name} vs {y_path.name}  [per dialect]")
+    print(f"{'dialect':12s} {'utt':>5s} {'spk':>4s} {'WER_X':>7s} {'WER_Y':>7s} {'delta':>7s}  "
+          f"utterance 95% CI          detected")
+    results = {}
+    for d in DIALECTS:
+        members = {i for i, x in enumerate(dialect_of) if x == d}
+        data, stats, _ = pair(X, Y, test, members, "in")
+        if stats["ref_mismatch"] or stats["cache_mismatch"]:
+            raise SystemExit(f"{d}: pairing invalid {stats}")
+        if stats["matched"] != EXPECTED[d]:
+            raise SystemExit(f"{d}: matched {stats['matched']}, expected {EXPECTED[d]}")
+
+        ex, ey, n = (np.array(data[k], dtype=float) for k in ("ex", "ey", "n"))
+        wx = 100 * ex.sum() / n.sum()
+        wy = 100 * ey.sum() / n.sum()
+        rng = np.random.default_rng(SEED)
+        lo, hi = np.percentile(bootstrap_delta(ex, ey, n, rng, B), [2.5, 97.5])
+        detected = bool(lo > 0 or hi < 0)
+        spk = len(set(data["spk"]))
+        results[d] = {"utterances": len(n), "speakers": spk, "wer_x": float(wx), "wer_y": float(wy),
+                      "delta_x_minus_y": float(wx - wy), "low": float(lo), "high": float(hi),
+                      "detected": detected}
+        print(f"{d:12s} {len(n):5d} {spk:4d} {wx:7.2f} {wy:7.2f} {wx - wy:+7.2f}  "
+              f"[{lo:+.2f}, {hi:+.2f}]   {detected}")
+
+    if args.json:
+        args.json.parent.mkdir(parents=True, exist_ok=True)
+        args.json.write_text(json.dumps({"x": x_path.name, "y": y_path.name, "scope": "per_dialect",
+                                         "dialects": results, "bootstrap_draws": B, "seed": SEED},
+                                        indent=2, ensure_ascii=False), encoding="utf-8")
+        print(f"saved {args.json}")
+
+
+if __name__ == "__main__":
+    main()
