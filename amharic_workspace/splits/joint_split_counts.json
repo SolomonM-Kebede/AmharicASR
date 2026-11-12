@@ -1,0 +1,32 @@
+{
+  "gojjam": {
+    "si_train": 8120,
+    "joint_train": 2626,
+    "validation": 1321,
+    "test": 654
+  },
+  "gonder": {
+    "si_train": 8708,
+    "joint_train": 1791,
+    "validation": 1394,
+    "test": 1237
+  },
+  "wello": {
+    "si_train": 8011,
+    "joint_train": 3136,
+    "validation": 1163,
+    "test": 836
+  },
+  "shewa": {
+    "si_train": 6248,
+    "joint_train": 1211,
+    "validation": 831,
+    "test": 1101
+  },
+  "addis ababa": {
+    "si_train": 7861,
+    "joint_train": 1532,
+    "validation": 1233,
+    "test": 760
+  }
+}
