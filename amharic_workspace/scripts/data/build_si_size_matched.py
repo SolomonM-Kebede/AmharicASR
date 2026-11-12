@@ -1,63 +1,100 @@
+"""Builds the D1 control: a speaker-independent (SI) training sample, size-matched per
+dialect to the Joint training set (C1).
 
-import os, collections
+The pool is every utterance whose speaker is not in the Joint validation or test sets
+(the SI training pool). For each dialect, D1 draws as many utterances as the Joint
+training set has for that dialect, with random_state=SEED. Unlike the Joint split, D1
+does not remove training texts that occur in validation or test, so its texts overlap
+those sets by design. It is the control for the text-independence effect.
+
+Writes:
+  cfg.D1_CACHE                          train (the sample), validation and test (Joint)
+  splits/manifests/d1_sample_manifest.csv  the sampled utterances, in sample order
+
+Run from the workspace root after sourcing env.amh.sh.
+"""
+from common import config as cfg  # must load before transformers/datasets
+
+import json
+import os
+import shutil
+from collections import Counter
+
 import pandas as pd
-from common import config as cfg 
-from datasets import load_dataset, load_from_disk, concatenate_datasets, DatasetDict, Audio
+from datasets import Audio, DatasetDict, concatenate_datasets, load_dataset, load_from_disk
+
 from data.normalize import normalize_amharic
 
-BASE = "/home/stud_homes/s8345520/AmharicASR/amharic_workspace"
-HF_CACHE = "/home/stud_homes/s8345520/AmharicASR/hf_cache"
-JOINT = f"{BASE}/phase2_leyu/dataset_cache_joint_independent"
-OUT = f"{BASE}/phase2_leyu/dataset_cache_si_size_matched"
-SEED = 42
-REPOS = {"gojjam": "leyu-amharic/leyu-amharic-gojjam-dialect",
-         "gonder": "leyu-amharic/leyu-amharic-gonder-dialect",
-         "wello": "leyu-amharic/leyu-amharic-wello-dialect",
-         "shewa": "leyu-amharic/leyu-amharic-shewa-dialect",
-         "addis ababa": "leyu-amharic/leyu-amharic-addis-ababa-dialect"}
+SEED = cfg.SEED
+OUT_CACHE = cfg.D1_CACHE
+MANIFEST = cfg.MANIFESTS / "d1_sample_manifest.csv"
+COUNTS = cfg.SPLITS / "joint_split_counts.json"
 
-joint = load_from_disk(JOINT)
-held = set(joint["validation"]["speaker_id"]) | set(joint["test"]["speaker_id"])
-target = collections.Counter(joint["train"]["dialect"])          # C1's per-dialect training counts
-print("held-out speakers:", len(held), "(expect 64) | target:", dict(target), "sum", sum(target.values()))
-print("example held-out IDs:", sorted(held)[:3])
+# Same order as build_joint_split.py, so the pool has the same row order.
+DIALECTS = [
+    ("gojjam", "leyu-amharic/leyu-amharic-gojjam-dialect"),
+    ("gonder", "leyu-amharic/leyu-amharic-gonder-dialect"),
+    ("wello", "leyu-amharic/leyu-amharic-wello-dialect"),
+    ("shewa", "leyu-amharic/leyu-amharic-shewa-dialect"),
+    ("addis ababa", "leyu-amharic/leyu-amharic-addis-ababa-dialect"),
+]
 
-def ns(name, sid):                       # "<dialect>::<id>", as in the Joint cache
-    sid = str(sid)
-    return sid if "::" in sid else f"{name}::{sid}"
 
-parts = []
-for name, repo in REPOS.items():
-    ds = load_dataset(repo, split="train", cache_dir=HF_CACHE)
-    tcol = "text" if "text" in ds.column_names else "sentence"
-    texts = [str(t or "") for t in ds[tcol]]
-    spk = [ns(name, s) for s in ds["speaker_id"]]
+def namespaced(dialect, speaker):
+    """Speaker ID in the Joint cache form, '<dialect>::<id>'."""
+    s = str(speaker)
+    return s if "::" in s else f"{dialect}::{s}"
+
+
+def load_dialect(dialect, repo):
+    ds = load_dataset(repo, split="train", verification_mode="no_checks")
+    text_col = "text" if "text" in ds.column_names else "sentence"
+    texts = [str(t or "") for t in ds[text_col]]
+    speakers = [namespaced(dialect, s) for s in ds["speaker_id"]]
     gender = list(ds["gender"]) if "gender" in ds.column_names else ["unknown"] * len(ds)
     ds = ds.cast_column("audio", Audio(sampling_rate=16_000, decode=False))
     ds = ds.remove_columns([c for c in ds.column_names if c != "audio"])
-    ds = (ds.add_column("text", texts).add_column("norm_text", [normalize_amharic(t) for t in texts])
-            .add_column("dialect", [name] * len(ds)).add_column("speaker_id", spk)
-            .add_column("gender", gender))
-    print(name, len(ds), "| example ID:", spk[0])
-    parts.append(ds)
-combined = concatenate_datasets(parts)
+    return (ds.add_column("text", texts)
+              .add_column("norm_text", [normalize_amharic(t) for t in texts])
+              .add_column("dialect", [dialect] * len(ds))
+              .add_column("speaker_id", speakers)
+              .add_column("gender", gender))
 
-meta = pd.DataFrame({"i": range(len(combined)), "spk": list(combined["speaker_id"]),
-                     "dialect": list(combined["dialect"]), "norm": list(combined["norm_text"])})
-pool = meta[~meta.spk.isin(held)]
-print("SI pool:", len(pool), "(expect 38,948) | speakers:", pool.spk.nunique(), "(expect 231)")
-assert len(pool) == 38948 and pool.spk.nunique() == 231, "speaker-ID convention differs: send me the printed IDs"
-assert set(target) == set(pool.dialect)
 
-sample = pd.concat([pool[pool.dialect == d].sample(n=target[d], random_state=SEED) for d in target])
-S = set(sample.norm)
-te, va = joint["test"]["norm_text"], joint["validation"]["norm_text"]
-print("D1 sample:", len(sample), "utts |", sample.spk.nunique(), "speakers | distinct texts", len(S))
-print("share of test utts with text in sample: %.3f (SI full pool: 0.964, Joint: 0.0)" % (sum(t in S for t in te) / len(te)))
-print("share of validation utts with text in sample: %.3f" % (sum(t in S for t in va) / len(va)))
+def main():
+    if OUT_CACHE.exists() and os.environ.get("OVERWRITE") != "1":
+        raise SystemExit(f"{OUT_CACHE} exists. Set OVERWRITE=1 to rebuild it.")
 
-os.makedirs("manifests", exist_ok=True)
-sample[["spk", "dialect", "norm"]].to_csv("splits/manifests/d1_sample_manifest.csv", index=False)
-DatasetDict({"train": combined.select(sorted(sample.i.tolist())),
-             "validation": joint["validation"], "test": joint["test"]}).save_to_disk(OUT)
-print("saved", OUT)
+    joint = load_from_disk(str(cfg.require(cfg.LEYU_JOINT_CACHE)))
+    held = set(joint["validation"]["speaker_id"]) | set(joint["test"]["speaker_id"])
+    target = Counter(joint["train"]["dialect"])
+    expected = json.loads(COUNTS.read_text(encoding="utf-8"))
+    expected_pool = sum(c["si_train"] for c in expected.values())
+    print(f"held-out speakers (validation + test): {len(held)}")
+    print(f"target per dialect (Joint training set): {dict(target)}  total {sum(target.values()):,}")
+
+    combined = concatenate_datasets([load_dialect(d, r) for d, r in DIALECTS])
+    meta = pd.DataFrame({"i": range(len(combined)),
+                         "spk": combined["speaker_id"],
+                         "dialect": combined["dialect"],
+                         "norm": combined["norm_text"]})
+    pool = meta[~meta.spk.isin(held)]
+    if len(pool) != expected_pool:
+        raise SystemExit(f"SI pool has {len(pool):,} utterances, joint_split_counts.json "
+                         f"says {expected_pool:,}; speaker IDs or the dataset differ")
+    if set(pool.dialect) != set(target):
+        raise SystemExit("dialect labels in the pool differ from the Joint training set")
+    print(f"SI pool: {len(pool):,} utterances, {pool.spk.nunique()} speakers")
+
+    parts = []
+    for dialect, _ in DIALECTS:
+        need = target[dialect]
+        have = (pool.dialect == dialect).sum()
+        if need > have:
+            raise SystemExit(f"{dialect}: need {need}, pool has {have}")
+        parts.append(pool[pool.dialect == dialect].sample(n=need, random_state=SEED))
+    sample = pd.concat(parts)
+    if sample.i.duplicated().any() or len(sample) != sum(target.values()):
+        raise SystemExit("sample is not a set of distinct utterances of the expected size")
+
+    sampled_texts = set(sample.norm)
