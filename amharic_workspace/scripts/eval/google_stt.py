@@ -95,7 +95,7 @@ def load_subset(rows):
 
 def check_audio(rows):
     missing = [r["path"] for r in rows
-               if r["duration_sec"] <= MAX_SYNC_SECONDS and not Path(r["path"]).exists()]
+               if r["duration_sec"] <= MAX_SYNC_SECONDS and not (cfg.DATA_DIR / r["path"]).exists()]
     if missing:
         raise SystemExit(f"{len(missing)} recordings to send are missing, first: {missing[0]}")
 
@@ -104,7 +104,7 @@ def transcribe(client, config, idx, entry, retries):
     """One recording. Quota errors are retried with backoff; other errors are not."""
     if entry["duration_sec"] > MAX_SYNC_SECONDS:
         return idx, "too_long", None, None
-    with open(entry["path"], "rb") as f:
+    with open(cfg.DATA_DIR / entry["path"], "rb") as f:
         audio = speech.RecognitionAudio(content=f.read())
     delay, error = 1.0, None
     for attempt in range(retries + 1):

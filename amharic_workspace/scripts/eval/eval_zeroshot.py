@@ -57,7 +57,7 @@ def transcribe(model, processor, rows, batch_size):
         chunk = rows[start:start + batch_size]
         wavs = []
         for r in chunk:
-            wav, sr = sf.read(r["path"], dtype="float32")
+            wav, sr = sf.read(cfg.DATA_DIR / r["path"], dtype="float32")
             if sr != 16_000:
                 raise ValueError(f"{r['path']} is {sr} Hz, expected 16 kHz")
             wavs.append(wav)
