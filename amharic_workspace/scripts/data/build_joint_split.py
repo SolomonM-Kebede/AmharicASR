@@ -120,7 +120,7 @@ def main():
 
     shared = len(set(validation["norm_text"]) & set(test["norm_text"]))
     print(f"\nspeaker overlap: {overlaps}")
-    print(f"validation and test share {shared:,} normalized prompts (thesis: 2,005)")
+    print(f"distinct normalized prompts shared by validation and test: {shared:,}")
 
     COUNTS_OUT.parent.mkdir(parents=True, exist_ok=True)
     COUNTS_OUT.write_text(json.dumps(counts, indent=2, ensure_ascii=False), encoding="utf-8")
