@@ -1,0 +1,34 @@
+torch  : 2.13.0+cu130
+GPU    : NVIDIA H200 NVL
+
+Loading processor/model from <repo>/amharic_workspace/phase3_full_finetune/models/phase3_full_finetuned_final ...
+
+Loading cached test split from <repo>/amharic_workspace/phase2_leyu/dataset_cache_2026-08-expanded-spkindep ...
+
+Running gojjam (n=654) ...
+  gojjam           n= 654  WER=30.69%  CER=10.80%
+
+Running gonder (n=1237) ...
+  gonder           n=1237  WER=23.48%  CER=7.73%
+
+Running wello (n=836) ...
+  wello            n= 836  WER=22.81%  CER=8.05%
+
+Running shewa (n=1101) ...
+  shewa            n=1101  WER=21.03%  CER=7.16%
+
+Running addis ababa (n=760) ...
+  addis ababa      n= 760  WER=18.04%  CER=5.89%
+
+============================================================
+  PHASE 3 (FULL FINE-TUNE) — TRUE FINAL RESULTS
+============================================================
+  gojjam             n=  654  WER= 30.69%  CER= 10.80%
+  gonder             n= 1237  WER= 23.48%  CER=  7.73%
+  wello              n=  836  WER= 22.81%  CER=  8.05%
+  shewa              n= 1101  WER= 21.03%  CER=  7.16%
+  addis ababa        n=  760  WER= 18.04%  CER=  5.89%
+  OVERALL            n= 4588  WER= 22.68%  CER=  7.71% ←
+============================================================
+
+Results saved to <repo>/amharic_workspace/phase3_fft/results/phase3_fft_TRUE_fixed.json

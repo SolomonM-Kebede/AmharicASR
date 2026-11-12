@@ -1,0 +1,35 @@
+torch  : 2.13.0+cu130
+GPU    : NVIDIA H200 NVL
+
+Loading processor/model from <repo>/amharic_workspace/phase2_leyu/models/phase2_final_merged ...
+
+Loading cached test split from <repo>/amharic_workspace/phase2_leyu/dataset_cache_2026-08-expanded-spkindep ...
+  full test set: 4,588 examples
+
+Running gojjam (n=654) ...
+  gojjam           n= 654  WER=26.43%  CER=9.51%
+
+Running gonder (n=1237) ...
+  gonder           n=1237  WER=15.14%  CER=5.16%
+
+Running wello (n=836) ...
+  wello            n= 836  WER=17.68%  CER=6.42%
+
+Running shewa (n=1101) ...
+  shewa            n=1101  WER=12.48%  CER=4.66%
+
+Running addis ababa (n=760) ...
+  addis ababa      n= 760  WER=13.27%  CER=4.42%
+
+============================================================
+  PHASE 2 (LEYU-ONLY) — TRUE FINAL RESULTS
+============================================================
+  gojjam             n=  654  WER= 26.43%  CER=  9.51%
+  gonder             n= 1237  WER= 15.14%  CER=  5.16%
+  wello              n=  836  WER= 17.68%  CER=  6.42%
+  shewa              n= 1101  WER= 12.48%  CER=  4.66%
+  addis ababa        n=  760  WER= 13.27%  CER=  4.42%
+  OVERALL            n= 4588  WER= 16.01%  CER=  5.69% ←
+============================================================
+
+Results saved to <repo>/amharic_workspace/phase2_leyu/results/phase2_dialect_results_2026-08-expanded-spkindep_TRUE_fixed.json

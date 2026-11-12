@@ -1,0 +1,28 @@
+torch  : 2.13.0+cu130
+GPU    : NVIDIA H200 NVL
+
+Loading processor from <repo>/amharic_workspace/phase1_curriculum/models/phase1_best_model_merged ...
+Loading MERGED model from <repo>/amharic_workspace/phase2b_leyu_standard/models/phase2b_final_merged ...
+
+Loading Leyu test split from <repo>/amharic_workspace/phase2_leyu/dataset_cache_2026-08-expanded-spkindep ...
+  full test set: 4,588 examples
+  gojjam           n= 654  WER=25.52%  CER=9.18%
+  gonder           n=1237  WER=14.22%  CER=4.89%
+  wello            n= 836  WER=16.61%  CER=6.13%
+  shewa            n=1101  WER=11.84%  CER=4.41%
+  addis ababa      n= 760  WER=12.99%  CER=4.26%
+
+============================================================
+  MERGED MODEL — FINAL RESULTS (generation_config fix applied)
+============================================================
+  gojjam             n=  654  WER= 25.52%  CER=  9.18%
+  gonder             n= 1237  WER= 14.22%  CER=  4.89%
+  wello              n=  836  WER= 16.61%  CER=  6.13%
+  shewa              n= 1101  WER= 11.84%  CER=  4.41%
+  addis ababa        n=  760  WER= 12.99%  CER=  4.26%
+  OVERALL            n= 4588  WER= 15.26%  CER=  5.43% ←
+============================================================
+  Unmerged (doc3, same harness)       : 15.89% WER
+============================================================
+
+Results saved to <repo>/amharic_workspace/phase2b_leyu_standard/results/phase2b_merged_FIXED_final.json

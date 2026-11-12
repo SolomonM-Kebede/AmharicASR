@@ -1,0 +1,234 @@
+torch  : 2.13.0+cu130
+GPU    : NVIDIA H200 NVL
+
+Reconstructing test-set speakers (with raw audio) per dialect ...
+  Fetching gojjam (leyu-amharic/leyu-amharic-gojjam-dialect) ...
+    [gojjam] test speakers: 6
+    → 654 test examples
+  Fetching gonder (leyu-amharic/leyu-amharic-gonder-dialect) ...
+    [gonder] test speakers: 7
+    → 1,237 test examples
+  Fetching wello (leyu-amharic/leyu-amharic-wello-dialect) ...
+    [wello] test speakers: 7
+    → 836 test examples
+  Fetching shewa (leyu-amharic/leyu-amharic-shewa-dialect) ...
+    [shewa] test speakers: 5
+    → 1,101 test examples
+  Fetching addis ababa (leyu-amharic/leyu-amharic-addis-ababa-dialect) ...
+    [addis ababa] test speakers: 7
+    → 760 test examples
+
+Loading zero-shot model openai/whisper-large-v3 (NOT fine-tuned) ...
+  Decoding audio for gojjam (654 examples) ...
+    [gojjam] 25/654  (20.49 ex/s, 1s elapsed, ~31s left)
+    [gojjam] 50/654  (32.05 ex/s, 2s elapsed, ~19s left)
+    [gojjam] 75/654  (39.91 ex/s, 2s elapsed, ~15s left)
+    [gojjam] 100/654  (43.88 ex/s, 2s elapsed, ~13s left)
+    [gojjam] 125/654  (46.09 ex/s, 3s elapsed, ~11s left)
+    [gojjam] 150/654  (47.82 ex/s, 3s elapsed, ~11s left)
+    [gojjam] 175/654  (48.50 ex/s, 4s elapsed, ~10s left)
+    [gojjam] 200/654  (50.11 ex/s, 4s elapsed, ~9s left)
+    [gojjam] 225/654  (50.98 ex/s, 4s elapsed, ~8s left)
+    [gojjam] 250/654  (51.28 ex/s, 5s elapsed, ~8s left)
+    [gojjam] 275/654  (51.43 ex/s, 5s elapsed, ~7s left)
+    [gojjam] 300/654  (51.83 ex/s, 6s elapsed, ~7s left)
+    [gojjam] 325/654  (52.93 ex/s, 6s elapsed, ~6s left)
+    [gojjam] 350/654  (53.53 ex/s, 7s elapsed, ~6s left)
+    [gojjam] 375/654  (53.79 ex/s, 7s elapsed, ~5s left)
+    [gojjam] 400/654  (54.07 ex/s, 7s elapsed, ~5s left)
+    [gojjam] 425/654  (54.32 ex/s, 8s elapsed, ~4s left)
+    [gojjam] 450/654  (54.43 ex/s, 8s elapsed, ~4s left)
+    [gojjam] 475/654  (54.73 ex/s, 9s elapsed, ~3s left)
+    [gojjam] 500/654  (54.41 ex/s, 9s elapsed, ~3s left)
+    [gojjam] 525/654  (54.32 ex/s, 10s elapsed, ~2s left)
+    [gojjam] 550/654  (54.22 ex/s, 10s elapsed, ~2s left)
+    [gojjam] 575/654  (54.17 ex/s, 11s elapsed, ~1s left)
+    [gojjam] 600/654  (54.04 ex/s, 11s elapsed, ~1s left)
+    [gojjam] 625/654  (53.91 ex/s, 12s elapsed, ~1s left)
+    [gojjam] 650/654  (53.60 ex/s, 12s elapsed, ~0s left)
+    [gojjam] 654/654  (53.61 ex/s, 12s elapsed, ~0s left)
+  gojjam           n= 654  WER=115.34%  CER=90.05%
+  Decoding audio for gonder (1,237 examples) ...
+    [gonder] 25/1237  (68.13 ex/s, 0s elapsed, ~18s left)
+    [gonder] 50/1237  (69.30 ex/s, 1s elapsed, ~17s left)
+    [gonder] 75/1237  (68.80 ex/s, 1s elapsed, ~17s left)
+    [gonder] 100/1237  (66.44 ex/s, 2s elapsed, ~17s left)
+    [gonder] 125/1237  (67.66 ex/s, 2s elapsed, ~16s left)
+    [gonder] 150/1237  (66.78 ex/s, 2s elapsed, ~16s left)
+    [gonder] 175/1237  (66.04 ex/s, 3s elapsed, ~16s left)
+    [gonder] 200/1237  (65.45 ex/s, 3s elapsed, ~16s left)
+    [gonder] 225/1237  (63.37 ex/s, 4s elapsed, ~16s left)
+    [gonder] 250/1237  (62.55 ex/s, 4s elapsed, ~16s left)
+    [gonder] 275/1237  (61.97 ex/s, 4s elapsed, ~16s left)
+    [gonder] 300/1237  (61.11 ex/s, 5s elapsed, ~15s left)
+    [gonder] 325/1237  (60.44 ex/s, 5s elapsed, ~15s left)
+    [gonder] 350/1237  (59.97 ex/s, 6s elapsed, ~15s left)
+    [gonder] 375/1237  (59.83 ex/s, 6s elapsed, ~14s left)
+    [gonder] 400/1237  (59.60 ex/s, 7s elapsed, ~14s left)
+    [gonder] 425/1237  (59.18 ex/s, 7s elapsed, ~14s left)
+    [gonder] 450/1237  (59.23 ex/s, 8s elapsed, ~13s left)
+    [gonder] 475/1237  (59.04 ex/s, 8s elapsed, ~13s left)
+    [gonder] 500/1237  (58.58 ex/s, 9s elapsed, ~13s left)
+    [gonder] 525/1237  (58.51 ex/s, 9s elapsed, ~12s left)
+    [gonder] 550/1237  (58.14 ex/s, 9s elapsed, ~12s left)
+    [gonder] 575/1237  (58.07 ex/s, 10s elapsed, ~11s left)
+    [gonder] 600/1237  (57.83 ex/s, 10s elapsed, ~11s left)
+    [gonder] 625/1237  (57.88 ex/s, 11s elapsed, ~11s left)
+    [gonder] 650/1237  (57.90 ex/s, 11s elapsed, ~10s left)
+    [gonder] 675/1237  (57.88 ex/s, 12s elapsed, ~10s left)
+    [gonder] 700/1237  (57.72 ex/s, 12s elapsed, ~9s left)
+    [gonder] 725/1237  (57.65 ex/s, 13s elapsed, ~9s left)
+    [gonder] 750/1237  (57.56 ex/s, 13s elapsed, ~8s left)
+    [gonder] 775/1237  (57.51 ex/s, 13s elapsed, ~8s left)
+    [gonder] 800/1237  (57.42 ex/s, 14s elapsed, ~8s left)
+    [gonder] 825/1237  (57.13 ex/s, 14s elapsed, ~7s left)
+    [gonder] 850/1237  (56.96 ex/s, 15s elapsed, ~7s left)
+    [gonder] 875/1237  (56.96 ex/s, 15s elapsed, ~6s left)
+    [gonder] 900/1237  (57.19 ex/s, 16s elapsed, ~6s left)
+    [gonder] 925/1237  (57.16 ex/s, 16s elapsed, ~5s left)
+    [gonder] 950/1237  (57.13 ex/s, 17s elapsed, ~5s left)
+    [gonder] 975/1237  (57.07 ex/s, 17s elapsed, ~5s left)
+    [gonder] 1000/1237  (57.03 ex/s, 18s elapsed, ~4s left)
+    [gonder] 1025/1237  (56.88 ex/s, 18s elapsed, ~4s left)
+    [gonder] 1050/1237  (56.91 ex/s, 18s elapsed, ~3s left)
+    [gonder] 1075/1237  (56.95 ex/s, 19s elapsed, ~3s left)
+    [gonder] 1100/1237  (56.80 ex/s, 19s elapsed, ~2s left)
+    [gonder] 1125/1237  (56.83 ex/s, 20s elapsed, ~2s left)
+    [gonder] 1150/1237  (56.78 ex/s, 20s elapsed, ~2s left)
+    [gonder] 1175/1237  (56.76 ex/s, 21s elapsed, ~1s left)
+    [gonder] 1200/1237  (56.69 ex/s, 21s elapsed, ~1s left)
+    [gonder] 1225/1237  (56.64 ex/s, 22s elapsed, ~0s left)
+    [gonder] 1237/1237  (56.60 ex/s, 22s elapsed, ~0s left)
+  gonder           n=1237  WER=114.20%  CER=90.04%
+  Decoding audio for wello (836 examples) ...
+    [wello] 25/836  (67.80 ex/s, 0s elapsed, ~12s left)
+    [wello] 50/836  (74.72 ex/s, 1s elapsed, ~11s left)
+    [wello] 75/836  (77.94 ex/s, 1s elapsed, ~10s left)
+    [wello] 100/836  (71.88 ex/s, 1s elapsed, ~10s left)
+    [wello] 125/836  (73.19 ex/s, 2s elapsed, ~10s left)
+    [wello] 150/836  (73.10 ex/s, 2s elapsed, ~9s left)
+    [wello] 175/836  (74.28 ex/s, 2s elapsed, ~9s left)
+    [wello] 200/836  (74.28 ex/s, 3s elapsed, ~9s left)
+    [wello] 225/836  (75.49 ex/s, 3s elapsed, ~8s left)
+    [wello] 250/836  (76.25 ex/s, 3s elapsed, ~8s left)
+    [wello] 275/836  (76.88 ex/s, 4s elapsed, ~7s left)
+    [wello] 300/836  (77.40 ex/s, 4s elapsed, ~7s left)
+    [wello] 325/836  (76.99 ex/s, 4s elapsed, ~7s left)
+    [wello] 350/836  (76.82 ex/s, 5s elapsed, ~6s left)
+    [wello] 375/836  (75.15 ex/s, 5s elapsed, ~6s left)
+    [wello] 400/836  (73.28 ex/s, 5s elapsed, ~6s left)
+    [wello] 425/836  (72.12 ex/s, 6s elapsed, ~6s left)
+    [wello] 450/836  (71.20 ex/s, 6s elapsed, ~5s left)
+    [wello] 475/836  (70.42 ex/s, 7s elapsed, ~5s left)
+    [wello] 500/836  (69.41 ex/s, 7s elapsed, ~5s left)
+    [wello] 525/836  (68.23 ex/s, 8s elapsed, ~5s left)
+    [wello] 550/836  (67.28 ex/s, 8s elapsed, ~4s left)
+    [wello] 575/836  (66.53 ex/s, 9s elapsed, ~4s left)
+    [wello] 600/836  (65.82 ex/s, 9s elapsed, ~4s left)
+    [wello] 625/836  (65.21 ex/s, 10s elapsed, ~3s left)
+    [wello] 650/836  (64.46 ex/s, 10s elapsed, ~3s left)
+    [wello] 675/836  (63.77 ex/s, 11s elapsed, ~3s left)
+    [wello] 700/836  (63.07 ex/s, 11s elapsed, ~2s left)
+    [wello] 725/836  (62.55 ex/s, 12s elapsed, ~2s left)
+    [wello] 750/836  (62.05 ex/s, 12s elapsed, ~1s left)
+    [wello] 775/836  (61.61 ex/s, 13s elapsed, ~1s left)
+    [wello] 800/836  (61.22 ex/s, 13s elapsed, ~1s left)
+    [wello] 825/836  (60.80 ex/s, 14s elapsed, ~0s left)
+    [wello] 836/836  (60.62 ex/s, 14s elapsed, ~0s left)
+  wello            n= 836  WER=113.73%  CER=94.36%
+  Decoding audio for shewa (1,101 examples) ...
+    [shewa] 25/1101  (52.76 ex/s, 0s elapsed, ~20s left)
+    [shewa] 50/1101  (53.60 ex/s, 1s elapsed, ~20s left)
+    [shewa] 75/1101  (53.62 ex/s, 1s elapsed, ~19s left)
+    [shewa] 100/1101  (54.48 ex/s, 2s elapsed, ~18s left)
+    [shewa] 125/1101  (54.48 ex/s, 2s elapsed, ~18s left)
+    [shewa] 150/1101  (54.10 ex/s, 3s elapsed, ~18s left)
+    [shewa] 175/1101  (53.40 ex/s, 3s elapsed, ~17s left)
+    [shewa] 200/1101  (53.28 ex/s, 4s elapsed, ~17s left)
+    [shewa] 225/1101  (53.42 ex/s, 4s elapsed, ~16s left)
+    [shewa] 250/1101  (53.55 ex/s, 5s elapsed, ~16s left)
+    [shewa] 275/1101  (53.47 ex/s, 5s elapsed, ~15s left)
+    [shewa] 300/1101  (53.26 ex/s, 6s elapsed, ~15s left)
+    [shewa] 325/1101  (53.08 ex/s, 6s elapsed, ~15s left)
+    [shewa] 350/1101  (53.01 ex/s, 7s elapsed, ~14s left)
+    [shewa] 375/1101  (52.98 ex/s, 7s elapsed, ~14s left)
+    [shewa] 400/1101  (53.12 ex/s, 8s elapsed, ~13s left)
+    [shewa] 425/1101  (53.26 ex/s, 8s elapsed, ~13s left)
+    [shewa] 450/1101  (53.27 ex/s, 8s elapsed, ~12s left)
+    [shewa] 475/1101  (53.15 ex/s, 9s elapsed, ~12s left)
+    [shewa] 500/1101  (53.00 ex/s, 9s elapsed, ~11s left)
+    [shewa] 525/1101  (52.58 ex/s, 10s elapsed, ~11s left)
+    [shewa] 550/1101  (52.14 ex/s, 11s elapsed, ~11s left)
+    [shewa] 575/1101  (52.00 ex/s, 11s elapsed, ~10s left)
+    [shewa] 600/1101  (51.79 ex/s, 12s elapsed, ~10s left)
+    [shewa] 625/1101  (51.52 ex/s, 12s elapsed, ~9s left)
+    [shewa] 650/1101  (51.33 ex/s, 13s elapsed, ~9s left)
+    [shewa] 675/1101  (51.08 ex/s, 13s elapsed, ~8s left)
+    [shewa] 700/1101  (50.97 ex/s, 14s elapsed, ~8s left)
+    [shewa] 725/1101  (50.76 ex/s, 14s elapsed, ~7s left)
+    [shewa] 750/1101  (50.59 ex/s, 15s elapsed, ~7s left)
+    [shewa] 775/1101  (50.49 ex/s, 15s elapsed, ~6s left)
+    [shewa] 800/1101  (50.32 ex/s, 16s elapsed, ~6s left)
+    [shewa] 825/1101  (50.28 ex/s, 16s elapsed, ~5s left)
+    [shewa] 850/1101  (50.17 ex/s, 17s elapsed, ~5s left)
+    [shewa] 875/1101  (50.13 ex/s, 17s elapsed, ~5s left)
+    [shewa] 900/1101  (50.16 ex/s, 18s elapsed, ~4s left)
+    [shewa] 925/1101  (50.25 ex/s, 18s elapsed, ~4s left)
+    [shewa] 950/1101  (50.27 ex/s, 19s elapsed, ~3s left)
+    [shewa] 975/1101  (50.31 ex/s, 19s elapsed, ~3s left)
+    [shewa] 1000/1101  (50.42 ex/s, 20s elapsed, ~2s left)
+    [shewa] 1025/1101  (50.49 ex/s, 20s elapsed, ~2s left)
+    [shewa] 1050/1101  (50.58 ex/s, 21s elapsed, ~1s left)
+    [shewa] 1075/1101  (50.63 ex/s, 21s elapsed, ~1s left)
+    [shewa] 1100/1101  (50.59 ex/s, 22s elapsed, ~0s left)
+    [shewa] 1101/1101  (50.59 ex/s, 22s elapsed, ~0s left)
+  shewa            n=1101  WER=102.30%  CER=85.77%
+  Decoding audio for addis ababa (760 examples) ...
+    [addis ababa] 25/760  (52.33 ex/s, 0s elapsed, ~14s left)
+    [addis ababa] 50/760  (56.33 ex/s, 1s elapsed, ~13s left)
+    [addis ababa] 75/760  (56.87 ex/s, 1s elapsed, ~12s left)
+    [addis ababa] 100/760  (57.06 ex/s, 2s elapsed, ~12s left)
+    [addis ababa] 125/760  (57.66 ex/s, 2s elapsed, ~11s left)
+    [addis ababa] 150/760  (57.72 ex/s, 3s elapsed, ~11s left)
+    [addis ababa] 175/760  (57.57 ex/s, 3s elapsed, ~10s left)
+    [addis ababa] 200/760  (57.50 ex/s, 3s elapsed, ~10s left)
+    [addis ababa] 225/760  (57.10 ex/s, 4s elapsed, ~9s left)
+    [addis ababa] 250/760  (56.91 ex/s, 4s elapsed, ~9s left)
+    [addis ababa] 275/760  (56.87 ex/s, 5s elapsed, ~9s left)
+    [addis ababa] 300/760  (56.89 ex/s, 5s elapsed, ~8s left)
+    [addis ababa] 325/760  (57.08 ex/s, 6s elapsed, ~8s left)
+    [addis ababa] 350/760  (57.13 ex/s, 6s elapsed, ~7s left)
+    [addis ababa] 375/760  (57.25 ex/s, 7s elapsed, ~7s left)
+    [addis ababa] 400/760  (57.26 ex/s, 7s elapsed, ~6s left)
+    [addis ababa] 425/760  (57.37 ex/s, 7s elapsed, ~6s left)
+    [addis ababa] 450/760  (57.46 ex/s, 8s elapsed, ~5s left)
+    [addis ababa] 475/760  (57.64 ex/s, 8s elapsed, ~5s left)
+    [addis ababa] 500/760  (57.75 ex/s, 9s elapsed, ~5s left)
+    [addis ababa] 525/760  (57.88 ex/s, 9s elapsed, ~4s left)
+    [addis ababa] 550/760  (57.96 ex/s, 9s elapsed, ~4s left)
+    [addis ababa] 575/760  (57.84 ex/s, 10s elapsed, ~3s left)
+    [addis ababa] 600/760  (57.79 ex/s, 10s elapsed, ~3s left)
+    [addis ababa] 625/760  (57.69 ex/s, 11s elapsed, ~2s left)
+    [addis ababa] 650/760  (57.71 ex/s, 11s elapsed, ~2s left)
+    [addis ababa] 675/760  (57.71 ex/s, 12s elapsed, ~1s left)
+    [addis ababa] 700/760  (57.60 ex/s, 12s elapsed, ~1s left)
+    [addis ababa] 725/760  (57.42 ex/s, 13s elapsed, ~1s left)
+    [addis ababa] 750/760  (57.37 ex/s, 13s elapsed, ~0s left)
+    [addis ababa] 760/760  (57.34 ex/s, 13s elapsed, ~0s left)
+  addis ababa      n= 760  WER=102.35%  CER=82.22%
+
+============================================================
+  ZERO-SHOT openai/whisper-large-v3 — RESULTS
+============================================================
+  gojjam                       n=  654  WER=115.34%  CER= 90.05%
+  gonder                       n= 1237  WER=114.20%  CER= 90.04%
+  wello                        n=  836  WER=113.73%  CER= 94.36%
+  shewa                        n= 1101  WER=102.30%  CER= 85.77%
+  addis ababa                  n=  760  WER=102.35%  CER= 82.22%
+  OVERALL                      n= 4588  WER=108.97%  CER= 88.23%
+
+Zero-shot results saved to <repo>/amharic_workspace/phase2_leyu/results/zeroshot_whisper_results.json
+Exported 4,588 WAV files + manifest to <repo>/amharic_workspace/test_set_audio_export
+Manifest: <repo>/amharic_workspace/test_set_audio_export/manifest.jsonl
+
+Next: run google_stt_eval.py against this manifest (can be on a different machine with internet access).

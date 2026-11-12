@@ -1,0 +1,7 @@
+Loading processor/model from <repo>/amharic_workspace/phase1_curriculum/models/phase1_best_model_merged ...
+Loading rebuilt test split from <repo>/amharic_workspace/phase1_curriculum/dataset_cache_rebuilt ...
+  test: 1,087 examples
+
+PHASE 1 (standard dialect) — TRUE FINAL RESULT
+  n=1087  WER=25.91%  CER=7.51%
+Saved to <repo>/amharic_workspace/phase1_curriculum/results/phase1_TRUE_fixed.json

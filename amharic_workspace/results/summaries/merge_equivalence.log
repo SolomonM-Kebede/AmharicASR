@@ -1,0 +1,13 @@
+decoder input ids: [[50258, 50334, 50360, 50364]]
+
+1. Unmerged LoRA model (float32)
+   decoder embeddings tied to output projection: True
+
+2. Merging with merge_and_unload(safe_merge=True)
+   encoder layer 0, k_proj: max |base + delta - merged| = 0.000e+00
+
+3. Merged model
+   decoder embeddings tied to output projection: True
+
+4. Max |logit difference| over the forward pass: 5.674e-05
+   threshold 0.0001: EQUIVALENT

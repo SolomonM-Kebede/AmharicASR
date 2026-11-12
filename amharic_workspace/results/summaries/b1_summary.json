@@ -28,7 +28,7 @@
     "n": 4894,
     "wer": 26.51,
     "cer": 9.24,
-    "model_dir": "/home/stud_homes/s8345520/AmharicASR/amharic_workspace/phase2_leyu/models/text_indep_lora_run/final_merged",
+    "model_dir": "<repo>/amharic_workspace/phase2_leyu/models/text_indep_lora_run/final_merged",
     "beams": 5
   }
 }

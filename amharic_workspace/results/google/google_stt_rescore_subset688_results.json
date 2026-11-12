@@ -1,0 +1,33 @@
+{
+  "gojjam": {
+    "n_samples": 185,
+    "wer": 62.77,
+    "cer": 35.64
+  },
+  "gonder": {
+    "n_samples": 275,
+    "wer": 69.58,
+    "cer": 42.53
+  },
+  "wello": {
+    "n_samples": 228,
+    "wer": 73.76,
+    "cer": 49.59
+  },
+  "OVERALL": {
+    "n_samples": 688,
+    "wer": 68.92,
+    "cer": 42.82
+  },
+  "_meta": {
+    "mode": "rescore",
+    "raw_file": "/vol/stud_homes/s8345520/AmharicASR/amharic_workspace/results/google/google_stt_raw_predictions.jsonl",
+    "scope": "688 complete-recording subset",
+    "sent": 4198,
+    "not_sent_over_limit": 390,
+    "failed": 0,
+    "max_sync_seconds": 55,
+    "language_code": "am-ET",
+    "metric": "evaluate wer/cer on normalized text, same counting as the Whisper runs"
+  }
+}
