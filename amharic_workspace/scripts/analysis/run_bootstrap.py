@@ -4,9 +4,12 @@ delta = WER(X) - WER(Y), in percentage points.
 A positive delta means Y has the lower WER.
 
 Scopes (mutually exclusive):
-  default              all 4,588 test utterances; utterance and speaker intervals
-  --subset             the 688 complete-recording subset; utterance interval only
-  --outside-subset     the 3,900 utterances not in the subset; utterance interval only
+  default                 all 4,588 test utterances; utterance and speaker intervals
+  --subset                the 688 complete-recording subset; utterance interval only
+  --outside-subset        the 3,900 utterances not in the subset; utterance interval only
+  --exclude-val-overlap   the 3,992 utterances whose text does not occur in the frozen
+                          800-utterance validation sample (splits/validation_800_idx.txt);
+                          utterance interval only
 
 Intervals are 95% percentile intervals from B resamples with a fixed seed. A
 difference is "detected" when its interval excludes zero. The speaker-level
@@ -19,6 +22,7 @@ Examples:
     python scripts/analysis/run_bootstrap.py
     python scripts/analysis/run_bootstrap.py --subset
     python scripts/analysis/run_bootstrap.py --outside-subset --json results/summaries/outside_subset.json
+    python scripts/analysis/run_bootstrap.py --exclude-val-overlap --json results/summaries/val_overlap_excluded.json
     python scripts/analysis/run_bootstrap.py --x a2_persample.jsonl --y d1_persample.jsonl
 """
 from common import config as cfg  # must load before transformers/datasets
@@ -35,7 +39,13 @@ from common.bootstrap_utils import bootstrap_delta, cache_ok, load, word_errors
 B = 10_000
 SEED = 42
 SUBSET_SIZE = 688
-EXPECTED = {"full": 4588, "subset688": 688, "outside_subset688": 3900}
+VAL_OVERLAP_EXPECTED = 596
+EXPECTED = {
+    "full": 4588,
+    "subset688": 688,
+    "outside_subset688": 3900,
+    "val_excluded": 3992,
+}
 
 
 def parse_args():
@@ -50,6 +60,9 @@ def parse_args():
                        help="688 complete-recording subset (utterance level only)")
     scope.add_argument("--outside-subset", action="store_true",
                        help="3,900 utterances outside the subset (utterance level only)")
+    scope.add_argument("--exclude-val-overlap", action="store_true",
+                       help="drop test utterances whose text occurs in the frozen "
+                            "800-utterance validation sample (utterance level only)")
     ap.add_argument("--json", type=Path, help="also write the results to this JSON file")
     return ap.parse_args()
 
@@ -59,6 +72,8 @@ def scope_of(args):
         return "subset688"
     if args.outside_subset:
         return "outside_subset688"
+    if args.exclude_val_overlap:
+        return "val_excluded"
     return "full"
 
 
@@ -70,12 +85,27 @@ def read_subset():
     return idx
 
 
-def pair(X, Y, test, subset=None, mode=None):
+def val_overlap_exclusions(cache, test):
+    """Test positions whose normalized text occurs in the frozen validation sample."""
+    path = cfg.require(cfg.SPLITS / "validation_800_idx.txt")
+    pos = [int(x) for x in path.read_text().split()]
+    if len(pos) != 800:
+        raise SystemExit(f"{path} lists {len(pos)} indices, expected 800")
+    val_texts = {t.strip() for t in cache["validation"].select(pos)["norm_text"]}
+    excluded = {i for i, t in enumerate(test["norm_text"]) if t.strip() in val_texts}
+    if len(excluded) != VAL_OVERLAP_EXPECTED:
+        raise SystemExit(f"{len(excluded)} test utterances overlap the validation sample, "
+                         f"expected {VAL_OVERLAP_EXPECTED}")
+    return excluded
+
+
+def pair(X, Y, test, subset=None, mode=None, exclude=None):
     """Collect matched utterances in sorted index order.
 
-    subset is None for all utterances. Otherwise mode "in" keeps only members of
-    subset and mode "out" keeps only non-members. The order matters: resampling
-    draws positions in this order, so changing it changes the intervals.
+    subset is None for no subset filter. Otherwise mode "in" keeps only members of
+    subset and mode "out" keeps only non-members. exclude is a set of test positions
+    to drop. The order matters: resampling draws positions in this order, so
+    changing it changes the intervals.
     """
     data = {"ex": [], "ey": [], "n": [], "spk": []}
     stats = {"matched": 0, "ref_mismatch": 0, "empty_ref": 0, "cache_mismatch": 0}
@@ -90,6 +120,8 @@ def pair(X, Y, test, subset=None, mode=None):
             stats["empty_ref"] += 1
             continue
         if subset is not None and (i in subset) != (mode == "in"):
+            continue
+        if exclude is not None and i in exclude:
             continue
 
         row = test[i]
@@ -115,14 +147,19 @@ def main():
     scope = scope_of(args)
     x_path = cfg.require(cfg.PERSAMPLE / args.x)
     y_path = cfg.require(cfg.PERSAMPLE / args.y)
-    test = load_from_disk(str(cfg.require(cfg.LEYU_JOINT_CACHE)))["test"]
 
-    subset, mode = None, None
-    if scope != "full":
-        subset = read_subset()
-        mode = "in" if scope == "subset688" else "out"
+    cache = load_from_disk(str(cfg.require(cfg.LEYU_JOINT_CACHE)))
+    test = cache["test"]
 
-    data, stats, examples = pair(load(x_path), load(y_path), test, subset, mode)
+    subset = mode = exclude = None
+    if scope == "subset688":
+        subset, mode = read_subset(), "in"
+    elif scope == "outside_subset688":
+        subset, mode = read_subset(), "out"
+    elif scope == "val_excluded":
+        exclude = val_overlap_exclusions(cache, test)
+
+    data, stats, examples = pair(load(x_path), load(y_path), test, subset, mode, exclude)
 
     print(f"{x_path.name} vs {y_path.name}  [{scope}]")
     print("pairing:", stats)
