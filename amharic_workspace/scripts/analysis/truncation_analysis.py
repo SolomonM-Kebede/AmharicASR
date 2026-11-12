@@ -40,7 +40,7 @@ def load_test():
     test = load_from_disk(str(cfg.require(cfg.LEYU_JOINT_CACHE)))["test"]
     audio = list(test.cast_column("audio", Audio(decode=False))["audio"])
     seconds = np.array([sf.info(audio_source(a)).duration for a in audio])
-    tok = WhisperTokenizer.from_pretrained(cfg.WHISPER_MODEL)
+    tok = WhisperTokenizer.from_pretrained(cfg.WHISPER_MODEL, language="amharic", task="transcribe")
     tokens = np.array([len(tok(t).input_ids) for t in test["norm_text"]])
     words = np.array([len(t.split()) for t in test["norm_text"]])
     return test, audio, seconds, tokens, words
