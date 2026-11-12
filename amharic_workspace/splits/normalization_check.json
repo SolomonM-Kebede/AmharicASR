@@ -1,0 +1,192 @@
+{
+  "leyu_joint_test_and_train": {
+    "characters": 5977966,
+    "distinct": 360,
+    "variant_letters_present": 0,
+    "unexpected_top": [
+      {
+        "char": "፡",
+        "codepoint": "0x1361",
+        "name": "ETHIOPIC WORDSPACE",
+        "count": 2829
+      },
+      {
+        "char": "​",
+        "codepoint": "0x200b",
+        "name": "ZERO WIDTH SPACE",
+        "count": 2575
+      },
+      {
+        "char": "–",
+        "codepoint": "0x2013",
+        "name": "EN DASH",
+        "count": 779
+      },
+      {
+        "char": "፨",
+        "codepoint": "0x1368",
+        "name": "ETHIOPIC PARAGRAPH SEPARATOR",
+        "count": 583
+      },
+      {
+        "char": "“",
+        "codepoint": "0x201c",
+        "name": "LEFT DOUBLE QUOTATION MARK",
+        "count": 497
+      },
+      {
+        "char": "”",
+        "codepoint": "0x201d",
+        "name": "RIGHT DOUBLE QUOTATION MARK",
+        "count": 475
+      },
+      {
+        "char": "·",
+        "codepoint": "0xb7",
+        "name": "MIDDLE DOT",
+        "count": 166
+      },
+      {
+        "char": "፩",
+        "codepoint": "0x1369",
+        "name": "ETHIOPIC DIGIT ONE",
+        "count": 81
+      },
+      {
+        "char": "•",
+        "codepoint": "0x2022",
+        "name": "BULLET",
+        "count": 77
+      },
+      {
+        "char": "፪",
+        "codepoint": "0x136a",
+        "name": "ETHIOPIC DIGIT TWO",
+        "count": 72
+      },
+      {
+        "char": "»",
+        "codepoint": "0xbb",
+        "name": "RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK",
+        "count": 71
+      },
+      {
+        "char": "«",
+        "codepoint": "0xab",
+        "name": "LEFT-POINTING DOUBLE ANGLE QUOTATION MARK",
+        "count": 70
+      },
+      {
+        "char": "፫",
+        "codepoint": "0x136b",
+        "name": "ETHIOPIC DIGIT THREE",
+        "count": 60
+      },
+      {
+        "char": "—",
+        "codepoint": "0x2014",
+        "name": "EM DASH",
+        "count": 52
+      },
+      {
+        "char": "÷",
+        "codepoint": "0xf7",
+        "name": "DIVISION SIGN",
+        "count": 49
+      },
+      {
+        "char": "…",
+        "codepoint": "0x2026",
+        "name": "HORIZONTAL ELLIPSIS",
+        "count": 42
+      },
+      {
+        "char": "‘",
+        "codepoint": "0x2018",
+        "name": "LEFT SINGLE QUOTATION MARK",
+        "count": 39
+      },
+      {
+        "char": "’",
+        "codepoint": "0x2019",
+        "name": "RIGHT SINGLE QUOTATION MARK",
+        "count": 39
+      },
+      {
+        "char": "️",
+        "codepoint": "0xfe0f",
+        "name": "VARIATION SELECTOR-16",
+        "count": 38
+      },
+      {
+        "char": "፬",
+        "codepoint": "0x136c",
+        "name": "ETHIOPIC DIGIT FOUR",
+        "count": 27
+      },
+      {
+        "char": "✔",
+        "codepoint": "0x2714",
+        "name": "HEAVY CHECK MARK",
+        "count": 24
+      },
+      {
+        "char": "▎",
+        "codepoint": "0x258e",
+        "name": "LEFT ONE QUARTER BLOCK",
+        "count": 24
+      },
+      {
+        "char": "⃣",
+        "codepoint": "0x20e3",
+        "name": "COMBINING ENCLOSING KEYCAP",
+        "count": 18
+      },
+      {
+        "char": "�",
+        "codepoint": "0xfffd",
+        "name": "REPLACEMENT CHARACTER",
+        "count": 14
+      },
+      {
+        "char": "፧",
+        "codepoint": "0x1367",
+        "name": "ETHIOPIC QUESTION MARK",
+        "count": 12
+      }
+    ],
+    "labialized": {
+      "ኋ": 2424,
+      "ሗ": 66,
+      "ሧ": 2
+    }
+  },
+  "standard_training_labels": {
+    "characters": 625345,
+    "distinct": 229,
+    "variant_letters_present": 0,
+    "unexpected_top": [
+      {
+        "char": "፡",
+        "codepoint": "0x1361",
+        "name": "ETHIOPIC WORDSPACE",
+        "count": 266
+      },
+      {
+        "char": "“",
+        "codepoint": "0x201c",
+        "name": "LEFT DOUBLE QUOTATION MARK",
+        "count": 3
+      },
+      {
+        "char": "”",
+        "codepoint": "0x201d",
+        "name": "RIGHT DOUBLE QUOTATION MARK",
+        "count": 2
+      }
+    ],
+    "labialized": {
+      "ኋ": 177
+    }
+  }
+}
