@@ -1,0 +1,18 @@
+{
+  "x": "results_raw_persample.jsonl",
+  "y": "c4b_bfloat16_persample.jsonl",
+  "scope": "outside_subset688",
+  "utterances": 3900,
+  "wer_x": 31.82878795093844,
+  "wer_y": 30.96007455833033,
+  "delta_x_minus_y": 0.868713392608113,
+  "intervals": {
+    "utterance": {
+      "low": 0.6455416713953591,
+      "high": 1.0933954827770072,
+      "detected": true
+    }
+  },
+  "bootstrap_draws": 10000,
+  "seed": 42
+}

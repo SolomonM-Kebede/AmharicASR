@@ -3,10 +3,14 @@
 delta = WER(X) - WER(Y), in percentage points.
 A positive delta means Y has the lower WER.
 
-Intervals are 95% percentile intervals from B resamples with a fixed seed.
-For the full test set the speaker-level interval is the primary one. The
-688-recording subset is reported at utterance level only, because it has
-13 speakers. A difference is "detected" when its interval excludes zero.
+Scopes (mutually exclusive):
+  default              all 4,588 test utterances; utterance and speaker intervals
+  --subset             the 688 complete-recording subset; utterance interval only
+  --outside-subset     the 3,900 utterances not in the subset; utterance interval only
+
+Intervals are 95% percentile intervals from B resamples with a fixed seed. A
+difference is "detected" when its interval excludes zero. The speaker-level
+interval is the primary one for the full set.
 
 Defaults compare C2 (LoRA, bf16) with C4b (full fine-tuning, bf16).
 Run from the workspace root after sourcing env.amh.sh.
@@ -14,6 +18,7 @@ Run from the workspace root after sourcing env.amh.sh.
 Examples:
     python scripts/analysis/run_bootstrap.py
     python scripts/analysis/run_bootstrap.py --subset
+    python scripts/analysis/run_bootstrap.py --outside-subset --json results/summaries/outside_subset.json
     python scripts/analysis/run_bootstrap.py --x a2_persample.jsonl --y d1_persample.jsonl
 """
 from common import config as cfg  # must load before transformers/datasets
@@ -30,6 +35,7 @@ from common.bootstrap_utils import bootstrap_delta, cache_ok, load, word_errors
 B = 10_000
 SEED = 42
 SUBSET_SIZE = 688
+EXPECTED = {"full": 4588, "subset688": 688, "outside_subset688": 3900}
 
 
 def parse_args():
@@ -39,11 +45,21 @@ def parse_args():
                     help="first system, a file in results/persample/ (default: C2, LoRA, bf16)")
     ap.add_argument("--y", default="c4b_bfloat16_persample.jsonl",
                     help="second system (default: C4b, full fine-tuning, bf16)")
-    ap.add_argument("--subset", action="store_true",
-                    help="restrict to the 688 complete-recording subset (utterance level only)")
-    ap.add_argument("--json", type=Path,
-                    help="also write the results to this JSON file")
+    scope = ap.add_mutually_exclusive_group()
+    scope.add_argument("--subset", action="store_true",
+                       help="688 complete-recording subset (utterance level only)")
+    scope.add_argument("--outside-subset", action="store_true",
+                       help="3,900 utterances outside the subset (utterance level only)")
+    ap.add_argument("--json", type=Path, help="also write the results to this JSON file")
     return ap.parse_args()
+
+
+def scope_of(args):
+    if args.subset:
+        return "subset688"
+    if args.outside_subset:
+        return "outside_subset688"
+    return "full"
 
 
 def read_subset():
@@ -54,11 +70,12 @@ def read_subset():
     return idx
 
 
-def pair(X, Y, test, subset):
+def pair(X, Y, test, subset=None, mode=None):
     """Collect matched utterances in sorted index order.
 
-    The order matters: resampling draws positions in this order, so changing it
-    changes the intervals.
+    subset is None for all utterances. Otherwise mode "in" keeps only members of
+    subset and mode "out" keeps only non-members. The order matters: resampling
+    draws positions in this order, so changing it changes the intervals.
     """
     data = {"ex": [], "ey": [], "n": [], "spk": []}
     stats = {"matched": 0, "ref_mismatch": 0, "empty_ref": 0, "cache_mismatch": 0}
@@ -72,7 +89,7 @@ def pair(X, Y, test, subset):
         if not ref.strip():
             stats["empty_ref"] += 1
             continue
-        if subset is not None and i not in subset:
+        if subset is not None and (i in subset) != (mode == "in"):
             continue
 
         row = test[i]
@@ -95,22 +112,27 @@ def pair(X, Y, test, subset):
 
 def main():
     args = parse_args()
+    scope = scope_of(args)
     x_path = cfg.require(cfg.PERSAMPLE / args.x)
     y_path = cfg.require(cfg.PERSAMPLE / args.y)
     test = load_from_disk(str(cfg.require(cfg.LEYU_JOINT_CACHE)))["test"]
-    subset = read_subset() if args.subset else None
 
-    data, stats, examples = pair(load(x_path), load(y_path), test, subset)
+    subset, mode = None, None
+    if scope != "full":
+        subset = read_subset()
+        mode = "in" if scope == "subset688" else "out"
 
-    label = f"{x_path.name} vs {y_path.name}" + ("  [688 subset]" if args.subset else "")
-    print(label)
+    data, stats, examples = pair(load(x_path), load(y_path), test, subset, mode)
+
+    print(f"{x_path.name} vs {y_path.name}  [{scope}]")
     print("pairing:", stats)
     for i, tail, head in examples:
         print(f"  cache mismatch idx={i}\n    ref tail : {tail!r}\n    norm head: {head!r}")
     if stats["ref_mismatch"] or stats["cache_mismatch"]:
         raise SystemExit("Pairing invalid. Do not use these results.")
-    if args.subset and stats["matched"] != SUBSET_SIZE:
-        raise SystemExit(f"matched {stats['matched']} subset utterances, expected {SUBSET_SIZE}")
+    if stats["matched"] != EXPECTED[scope]:
+        raise SystemExit(f"matched {stats['matched']} utterances for scope {scope}, "
+                         f"expected {EXPECTED[scope]}")
 
     ex, ey, n = (np.array(data[k], dtype=float) for k in ("ex", "ey", "n"))
     point = 100.0 * (ex.sum() - ey.sum()) / n.sum()
@@ -120,19 +142,19 @@ def main():
     print(f"delta = WER_X - WER_Y = {point:.2f} points (positive: Y has lower WER)")
 
     levels = {"utterance": (ex, ey, n)}
-    if not args.subset:
+    if scope == "full":
         speakers = sorted(set(data["spk"]))
         index = {s: k for k, s in enumerate(speakers)}
         sid = np.array([index[s] for s in data["spk"]])
         S = len(speakers)
-        sx = np.bincount(sid, weights=ex, minlength=S)
-        sy = np.bincount(sid, weights=ey, minlength=S)
-        sn = np.bincount(sid, weights=n, minlength=S)
         print(f"speakers   = {S}")
-        levels["speaker"] = (sx, sy, sn)
+        levels["speaker"] = (
+            np.bincount(sid, weights=ex, minlength=S),
+            np.bincount(sid, weights=ey, minlength=S),
+            np.bincount(sid, weights=n, minlength=S),
+        )
 
     # Utterance level is drawn first, then speaker level, from one generator.
-    # Keep this order so the intervals reproduce.
     rng = np.random.default_rng(SEED)
     intervals = {}
     for name, (a, b, c) in levels.items():
@@ -147,7 +169,7 @@ def main():
         result = {
             "x": x_path.name,
             "y": y_path.name,
-            "subset": args.subset,
+            "scope": scope,
             "utterances": len(n),
             "wer_x": float(100 * ex.sum() / n.sum()),
             "wer_y": float(100 * ey.sum() / n.sum()),
