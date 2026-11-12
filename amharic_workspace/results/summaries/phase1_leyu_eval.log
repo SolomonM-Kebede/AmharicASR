@@ -1,0 +1,37 @@
+torch  : 2.13.0+cu130
+GPU    : NVIDIA H200 NVL
+
+Loading processor/model from /home/stud_homes/s8345520/AmharicASR/amharic_workspace/phase1_curriculum/models/phase1_best_model_merged ...
+
+Loading manifest from /home/stud_homes/s8345520/AmharicASR/amharic_workspace/test_set_audio_export/manifest.jsonl ...
+  full test set: 4,588 examples
+Mapping audio files to log-Mel features...
+
+Running dialect-by-dialect evaluation...
+Running gojjam (n=654)...
+  gojjam           n= 654  WER=103.83%  CER=34.33%
+Running gonder (n=1237)...
+  gonder           n=1237  WER=102.40%  CER=32.89%
+Running wello (n=836)...
+  wello            n= 836  WER=91.47%  CER=31.13%
+Running shewa (n=1101)...
+  shewa            n=1101  WER=94.12%  CER=31.53%
+Running addis ababa (n=760)...
+  addis ababa      n= 760  WER=102.30%  CER=31.39%
+
+Calculating OVERALL evaluation...
+
+============================================================
+  PHASE 1 FINAL RESULTS (beam=5, max_length=448)
+============================================================
+  Dialect            Samples       WER       CER
+  ----------------------------------------------
+  gojjam                 654   103.83%    34.33%
+  gonder                1237   102.40%    32.89%
+  wello                  836    91.47%    31.13%
+  shewa                 1101    94.12%    31.53%
+  addis ababa            760   102.30%    31.39%
+  OVERALL               4588    98.52%    32.15% ←
+============================================================
+
+Phase 1 results successfully saved to /home/stud_homes/s8345520/AmharicASR/amharic_workspace/phase2_leyu/results/phase1_dialect_results_beam5.json

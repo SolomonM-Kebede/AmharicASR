@@ -1,0 +1,11 @@
+job 11194 on anduin.hucompute.org
+name, memory.total [MiB]
+NVIDIA H200 NVL, 143771 MiB
+gojjam       n=  932  WER= 32.88%  CER= 12.52%
+gonder       n= 1180  WER= 30.77%  CER= 11.17%
+wello        n= 1053  WER= 23.48%  CER=  7.93%
+shewa        n=  787  WER= 25.76%  CER=  8.00%
+addis ababa  n=  942  WER= 20.46%  CER=  6.80%
+OVERALL      n= 4894  WER= 26.51%  CER=  9.24%
+saved /vol/stud_homes/s8345520/AmharicASR/amharic_workspace/results/persample/b1_rerun_persample.jsonl
+saved /vol/stud_homes/s8345520/AmharicASR/amharic_workspace/results/persample/b1_rerun.json

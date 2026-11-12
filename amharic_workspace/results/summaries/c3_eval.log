@@ -1,0 +1,33 @@
+Host: anduin.hucompute.org   Start: So 6. Sep 22:10:42 CEST 2026   EVAL_MODEL_SOURCE=phase1
+NVIDIA H200 NVL, 143771 MiB
+EVAL_MODEL_SOURCE = phase1
+Loading processor from /home/stud_homes/s8345520/AmharicASR/amharic_workspace/joint_composition_ablation/models/phase1_joint_lora_run/final_merged...
+Loading TEST dataset...
+Extracting log-Mel features for 4588 test samples...
+Loading model from /home/stud_homes/s8345520/AmharicASR/amharic_workspace/joint_composition_ablation/models/phase1_joint_lora_run/final_merged...
+  forced_ids = [(1, 50334), (2, 50360), (3, 50364)]
+
+Running per-dialect evaluation on the full test set...
+  Evaluating addis ababa...
+    n= 760  WER=28.18%  CER=9.14%
+  Evaluating gojjam...
+    n= 654  WER=38.02%  CER=13.34%
+  Evaluating gonder...
+    n=1237  WER=34.83%  CER=11.86%
+  Evaluating shewa...
+    n=1101  WER=33.50%  CER=11.32%
+  Evaluating wello...
+    n= 836  WER=30.42%  CER=10.66%
+
+============================================================
+  JOINT COMPOSITION ABLATION [PHASE1] — FINAL RESULTS (beam=5)
+============================================================
+  addis ababa        n=  760  WER= 28.18%  CER=  9.14%
+  gojjam             n=  654  WER= 38.02%  CER= 13.34%
+  gonder             n= 1237  WER= 34.83%  CER= 11.86%
+  shewa              n= 1101  WER= 33.50%  CER= 11.32%
+  wello              n=  836  WER= 30.42%  CER= 10.66%
+  OVERALL            n= 4588  WER= 32.95%  CER= 11.22% ←
+============================================================
+Results saved to /home/stud_homes/s8345520/AmharicASR/amharic_workspace/joint_composition_ablation/results_phase1.json
+Exit code 0   End: Mo 7. Sep 01:33:19 CEST 2026
