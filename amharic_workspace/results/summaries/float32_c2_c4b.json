@@ -1,0 +1,23 @@
+{
+  "x": "c2fp32merge_float32_persample.jsonl",
+  "y": "c4b_float32_persample.jsonl",
+  "scope": "full",
+  "utterances": 4588,
+  "wer_x": 31.99020184949585,
+  "wer_y": 31.191412060333313,
+  "delta_x_minus_y": 0.7987897891625366,
+  "intervals": {
+    "utterance": {
+      "low": 0.5799621182271246,
+      "high": 1.0184671537052963,
+      "detected": true
+    },
+    "speaker": {
+      "low": 0.4991149813168044,
+      "high": 1.0890957415750704,
+      "detected": true
+    }
+  },
+  "bootstrap_draws": 10000,
+  "seed": 42
+}
