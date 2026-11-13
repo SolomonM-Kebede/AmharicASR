@@ -1,0 +1,51 @@
+{
+  "partitions": {
+    "train": 38948,
+    "validation": 5942,
+    "test": 4588
+  },
+  "graph": {
+    "utterances": 49478,
+    "components": 7,
+    "largest_share_pct": 49.7,
+    "top_shares_pct": [
+      49.7,
+      15.7,
+      13.9,
+      13.3,
+      3.5,
+      3.2
+    ],
+    "largest_speakers": 147,
+    "largest_utterances_by_dialect": {
+      "gonder": 11339,
+      "gojjam": 10095,
+      "wello": 3137
+    },
+    "speakers_by_dialect_total": {
+      "addis ababa": 63,
+      "gojjam": 58,
+      "gonder": 63,
+      "shewa": 48,
+      "wello": 63
+    },
+    "speakers_by_dialect_in_largest": {
+      "gojjam": 58,
+      "gonder": 63,
+      "wello": 26
+    },
+    "singleton_components": 0,
+    "non_largest_components_single_dialect": true
+  },
+  "filters": {
+    "si_train": 38948,
+    "within_dialect_survivors": 10351,
+    "survivors_with_prompt_in_other_dialect_heldout": 55,
+    "cross_share_pct": 0.53,
+    "global_joint_train": 10296
+  },
+  "val_test": {
+    "val_test_shared_texts": 2005,
+    "test_utt_with_text_in_val_pct": 67.0
+  }
+}
