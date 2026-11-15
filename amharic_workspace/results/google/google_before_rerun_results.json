@@ -31,7 +31,7 @@
   },
   "_meta": {
     "mode": "rescore",
-    "raw_file": "/vol/stud_homes/s8345520/AmharicASR/amharic_workspace/results/google/google_stt_raw_predictions_before_rerun.jsonl",
+    "raw_file": "results/google/google_stt_raw_predictions_before_rerun.jsonl",
     "scope": "full test set (sent recordings)",
     "sent": 4196,
     "not_sent_over_limit": 390,

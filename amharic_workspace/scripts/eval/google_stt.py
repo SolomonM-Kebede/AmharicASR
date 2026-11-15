@@ -250,7 +250,7 @@ def main():
     results = score(rows, outcomes, only)
     results["_meta"] = {
         "mode": "rescore" if args.rescore else "api",
-        "raw_file": str(cfg.GOOGLE / args.raw) if args.rescore else raw_path.name,
+        "raw_file": str((cfg.GOOGLE / args.raw).relative_to(cfg.GOOGLE.parents[1])) if args.rescore else raw_path.name,
         "scope": f"688 complete-recording subset" if args.subset else "full test set (sent recordings)",
         "sent": counts["ok"],
         "not_sent_over_limit": counts["too_long"],
