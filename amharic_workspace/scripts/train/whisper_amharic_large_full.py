@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+One of the first experimental runs 
+
 train_whisper_amharic_largev3.py
 ================================
 Full fine-tune of Whisper large-v3 for Amharic ASR.
