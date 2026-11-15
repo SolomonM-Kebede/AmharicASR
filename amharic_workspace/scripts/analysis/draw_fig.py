@@ -66,7 +66,7 @@ def draw_rq3(stats):
         ("Full FT, FP32\n(C4b)", stats["c4b"][1], "#dd8452"),
     ]
 
-    plt.rcParams.update({"font.size": 9, "font.family": "serif", "pdf.fonttype": 42})
+    plt.rcParams.update({"font.size": 5, "font.family": "serif", "pdf.fonttype": 42})
     fig, (ax_a, ax_b) = plt.subplots(
         1, 2, figsize=(6.3, 2.7), sharey=True, gridspec_kw={"width_ratios": [1, 2.3]})
 
@@ -74,12 +74,12 @@ def draw_rq3(stats):
     bars = ax_a.bar(x, [v for _, v, _ in overall], 0.6, color=[c for *_, c in overall])
     ax_a.bar_label(bars, fmt="%.2f", fontsize=6, padding=1)
     ax_a.set_xticks(x)
-    ax_a.set_xticklabels([n for n, *_ in overall], fontsize=7)
+    ax_a.set_xticklabels([n for n, *_ in overall], fontsize=6)
     ax_a.set_ylabel("WER (%)")
     ax_a.set_ylim(0, 46)
     ax_a.grid(axis="y", alpha=0.3)
     ax_a.set_axisbelow(True)
-    ax_a.set_title("(a) Overall", fontsize=9)
+    ax_a.set_title("(a) Overall", fontsize=6)
 
     w = 0.36
     x = np.arange(len(LABELS))
@@ -88,14 +88,15 @@ def draw_rq3(stats):
     ax_b.bar_label(b1, fmt="%.2f", fontsize=6, padding=1, rotation=90)
     ax_b.bar_label(b2, fmt="%.2f", fontsize=6, padding=1, rotation=90)
     ax_b.set_xticks(x)
-    ax_b.set_xticklabels(LABELS, fontsize=8)
+    ax_b.set_xticklabels(LABELS, fontsize=6)
     ax_b.grid(axis="y", alpha=0.3)
     ax_b.set_axisbelow(True)
-    ax_b.set_title("(b) By dialect", fontsize=9)
-    ax_b.legend(frameon=False, ncol=2, loc="upper center", fontsize=8)
+    ax_b.set_title("(b) By dialect", fontsize=6)
+    ax_b.legend(frameon=False, ncol=2, loc="upper center", fontsize=6.8)
 
     fig.tight_layout()
-    fig.savefig(cfg.FIGURES / "fig_rq3.png", dpi=300)
+    fig.savefig(cfg.FIGURES / "fig_rq3.png", dpi=400)
+    fig.savefig(cfg.FIGURES / "fig_rq3.pdf", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -120,10 +121,11 @@ def draw_per_dialect(stats):
     ax.set_ylim(0, 52)
     ax.grid(axis="y", alpha=0.3)
     ax.set_axisbelow(True)
-    ax.legend(frameon=False, ncol=3, loc="upper center", fontsize=8)
+    ax.legend(frameon=False, ncol=3, loc="upper center", fontsize=7.1)
 
     fig.tight_layout()
-    fig.savefig(cfg.FIGURES / "fig_per_dialect.png", dpi=300)
+    fig.savefig(cfg.FIGURES / "fig_per_dialect.png", dpi=500)
+    fig.savefig(cfg.FIGURES / "fig_per_dialect.pdf", bbox_inches="tight")
     plt.close(fig)
 
 
