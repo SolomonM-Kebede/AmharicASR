@@ -1,4 +1,5 @@
-"""Merge equivalence test for the Phase 2 LoRA adapter. No training.
+"""
+Merge equivalence test for the Phase 2 LoRA adapter. No training.
 
 Checks three things on a fixed random input:
   1. The merged weights equal base + delta for one attention projection.

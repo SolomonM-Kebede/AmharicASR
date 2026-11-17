@@ -358,7 +358,7 @@ def train_whisper(config: dict):
         processor.save_pretrained(config.get('output_dir'))
 
 
-# MODE A: HPO (SKIPPED BY DEFAULT)
+# MODE A: HPO (default)
 if not ray.is_initialized(): ray.init(num_gpus=N_GPUS, ignore_reinit_error=True)
 
 if RUN_HPO:

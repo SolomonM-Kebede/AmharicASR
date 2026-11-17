@@ -1,10 +1,12 @@
-"""Google Speech-to-Text (synchronous API) on the Leyu test recordings.
+"""
+Google Speech-to-Text (synchronous API) on the Leyu test recordings.
 
 Sends each test recording of at most cfg.GOOGLE_MAX_SYNC_SECONDS (55 s) to the
 API, keeps the raw transcripts, and scores them with the shared normalization.
 The API accepts at most 60 s per request; the 55 s rule leaves a margin. Of the
 4,588 test recordings, 4,198 are sent and 390 are not (147 of them exceed 60 s).
 
+how to run? 
 Two modes:
   default     Sends requests and writes the raw transcripts. Each request is
               billed, so the mode refuses to overwrite an existing raw file.
@@ -48,7 +50,7 @@ SUBSET_SIZE = 688
 MAX_SYNC_SECONDS = cfg.GOOGLE_MAX_SYNC_SECONDS
 LANGUAGE_CODE = os.environ.get("GOOGLE_STT_LANGUAGE_CODE", "am-ET")
 
-
+# mode selections
 def parse_args():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--name", default="google_stt",

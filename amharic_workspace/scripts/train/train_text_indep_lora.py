@@ -3,7 +3,6 @@ Test independent training script
 """
 
 
-# Config sets the Hugging Face cache and offline flags. It must load before transformers and datasets, so it comes first among the project imports.
 from common import config as cfg 
 
 import io

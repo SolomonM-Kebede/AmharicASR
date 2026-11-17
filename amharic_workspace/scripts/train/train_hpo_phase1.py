@@ -20,7 +20,7 @@ import soundfile as sf
 import torch
 import matplotlib
 
-# Config sets the Hugging Face cache and offline flags. It must load before transformers
+# Config sets the Hugging Face cache and offline flags.
 from common import config as cfg  
 
 matplotlib.use("Agg")

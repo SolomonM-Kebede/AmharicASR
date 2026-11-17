@@ -1,4 +1,5 @@
-"""Common Voice pool, text-mark sensitivity, and saved training arguments.
+"""
+Common Voice pool, text-mark sensitivity, and saved training arguments.
 
 1. Counts the clips in each Common Voice TSV that the C2/C3 pool uses.
 2. Measures how the Ethiopic word-separator marks and invisible characters
@@ -7,7 +8,7 @@
 
 Run from the workspace root after sourcing env.amh.sh.
 """
-from common import config as cfg  # must load before transformers/datasets
+from common import config as cfg  
 
 import json
 import re

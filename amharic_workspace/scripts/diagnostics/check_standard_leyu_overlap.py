@@ -1,4 +1,5 @@
-"""Text overlap between the Standard-Amharic sources and the Leyu held-out text.
+"""
+Text overlap between the Standard-Amharic sources and the Leyu held-out text.
 
 Compares normalized ALFFA transcripts and every Common Voice sentence in the
 release with the normalized validation and test texts of the Joint split. The
@@ -6,8 +7,7 @@ thesis states zero overlap for the Standard-Amharic data; this script measures i
 
 Run from the workspace root after sourcing env.amh.sh.
 """
-from common import config as cfg  # must load before transformers/datasets
-
+from common import config as cfg  
 import pandas as pd
 from datasets import load_dataset, load_from_disk
 

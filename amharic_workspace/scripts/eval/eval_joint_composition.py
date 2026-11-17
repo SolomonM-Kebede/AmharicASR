@@ -1,4 +1,5 @@
-"""Test-set evaluation of a joint-composition LoRA arm (raw or phase1 initialization).
+"""
+Test-set evaluation of a joint-composition LoRA with two options (raw or phase1 initialization).
 
 Defaults reproduce the reported composition runs: merged checkpoint, bfloat16
 inference, beam 5, generation limit 448 tokens. --max-new-tokens 225 reproduces
@@ -9,7 +10,7 @@ Writes results/persample/<name>_persample.jsonl (read by run_bootstrap.py) and
 results/persample/<name>.json (per-dialect summary).
 Run from the workspace root after sourcing env.amh.sh.
 """
-from common import config as cfg  # must load before transformers/datasets
+from common import config as cfg  
 
 import argparse
 import io
@@ -35,7 +36,7 @@ DIALECTS = ["gojjam", "gonder", "wello", "shewa", "addis ababa"]
 EXPECTED_TEST = 4588
 REPORTED_LIMIT = cfg.MAX_LABEL_LENGTH  # 448, the decoder limit used for reported runs
 
-
+# for different runs from terminal
 def parse_args():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--source", choices=["raw", "phase1"], required=True)

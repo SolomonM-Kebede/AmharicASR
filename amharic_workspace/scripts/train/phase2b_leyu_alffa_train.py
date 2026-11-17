@@ -6,19 +6,7 @@ Controlled comparison against the Leyu-only Phase 2 result (56.84% OVERALL WER).
 Mixes in standard speech (100% of curated ALFFA, topped off with CV) up to the
 defined STANDARD_RATIO to match the baseline training volume.
 """
-
 import os
-
-CUSTOM_CACHE = os.environ.get("STT_CACHE_DIR", os.path.expanduser("~/AmharicASR/clean_cache"))
-os.makedirs(CUSTOM_CACHE, exist_ok=True)
-os.environ["HF_HOME"] = CUSTOM_CACHE
-os.environ["HF_DATASETS_CACHE"] = CUSTOM_CACHE
-os.environ["HF_HUB_CACHE"] = CUSTOM_CACHE
-os.environ["HF_MODULES_CACHE"] = CUSTOM_CACHE
-os.environ["HF_METRICS_CACHE"] = CUSTOM_CACHE
-os.environ["HF_EVALUATE_CACHE"] = CUSTOM_CACHE
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"  
-
 import io
 import json
 import pandas as pd

@@ -1,4 +1,5 @@
-"""Check that the per-sample predictions agree with the test manifest.
+"""
+Check that the per-sample predictions agree with the test manifest.
 
 Compares the reference stored in each per-utterance record with the reference
 in the test manifest, at the same index. Run from the workspace root after

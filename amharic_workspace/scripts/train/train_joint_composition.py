@@ -1,6 +1,6 @@
 
 """
-Amharic ASR — Joint Composition Ablation (Leyu joint-independent + ALFFA + CV)
+Amharic ASR: Joint Composition Ablation (Leyu joint-independent + ALFFA + CV)
 Controlled pair: MODEL_SOURCE=raw uses openai/whisper-large-v3,
                  MODEL_SOURCE=phase1 uses Phase1_merged.
 Everything else — split, data composition, LoRA config — held identical.

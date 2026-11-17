@@ -1,4 +1,5 @@
-"""Shared helpers for the paired WER bootstrap scripts.
+"""
+Shared helpers for the paired WER bootstrap scripts.
 
 Sign convention: every delta is WER_X - WER_Y in percentage points, so a positive
 delta means Y has the lower WER. The thesis tables use WER(C4b) - WER(C2), so
@@ -38,7 +39,6 @@ def word_errors(ref, hyp):
 
 def cache_ok(row, ref):
     """The stored reference must be a prefix of the cached normalized text.
-
     A trailing partial character (U+FFFD) from byte-level truncation is ignored.
     """
     norm = row["norm_text"].strip()
@@ -47,7 +47,8 @@ def cache_ok(row, ref):
 
 
 def pair(X, Y, test, subset=None, mode=None, exclude=None):
-    """Collect matched utterances in sorted index order.
+    """
+    Collect matched utterances in sorted index order.
 
     subset is None for no subset filter. Otherwise mode "in" keeps only members of
     subset and mode "out" keeps only non-members. exclude is a set of test positions
@@ -90,7 +91,8 @@ def pair(X, Y, test, subset=None, mode=None, exclude=None):
 
 
 def bootstrap_delta(sx, sy, sn, rng, B):
-    """Resample groups with replacement; return WER_X - WER_Y for each draw.
+    """
+    Resample groups with replacement; return WER_X - WER_Y for each draw.
 
     For utterance-level intervals, pass per-utterance arrays. For speaker-level
     intervals, pass per-speaker totals. Draws come from one generator, so the

@@ -1,4 +1,5 @@
-"""Statistics of the Joint split: partition sizes, speakers, distinct texts,
+"""
+Statistics of the Joint split: partition sizes, speakers, distinct texts,
 share of utterances over 30 s and over 448 tokens, median duration, per-dialect
 counts, and overlap between partitions.
 
@@ -6,7 +7,7 @@ Writes splits/split_stats.json and splits/split_stats_partitions.csv and prints
 the LaTeX rows for Chapter 4. Reads audio headers only, so it takes a few minutes.
 Run from the workspace root after sourcing env.amh.sh.
 """
-from common import config as cfg  # must load before transformers/datasets
+from common import config as cfg  
 
 import csv
 import io

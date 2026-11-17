@@ -1,4 +1,5 @@
-"""Phase 2 (Leyu-only) evaluation of the merged LoRA model on the SI test split.
+"""
+Phase 2 (Leyu-only) evaluation of the merged LoRA model on the SI test split.
 
 This is the record of the run that produced the 16.01% WER reported for A2.
 Settings, as they were in that run:
@@ -119,7 +120,7 @@ def main():
             output_dir=str(cfg.CHECKPOINT_DIR / "eval_scratch" / args.name),
             per_device_eval_batch_size=args.batch_size,
             predict_with_generate=True,
-            # generation_max_length deliberately not set: the model's max_length governs.
+            # generation_max_length deliberately not set: to let the model's max_length governs.
             bf16=True, fp16=False,
             report_to=["none"],
             remove_unused_columns=False,

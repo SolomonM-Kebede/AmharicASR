@@ -6,13 +6,6 @@ speaker+text-independent split, matched to the best LoRA arm
 
 import os
 
-CUSTOM_CACHE = "/AmharicASR/hf_cache"
-os.makedirs(CUSTOM_CACHE, exist_ok=True)
-os.environ["HF_HOME"] = CUSTOM_CACHE
-os.environ["HF_HUB_CACHE"] = CUSTOM_CACHE
-os.environ["HF_DATASETS_CACHE"] = CUSTOM_CACHE
-os.environ["HF_MODULES_CACHE"] = CUSTOM_CACHE
-
 import random
 from dataclasses import dataclass
 from pathlib import Path

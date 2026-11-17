@@ -1,5 +1,7 @@
-"""Joint and SI split diagnostics: independence, overlap, dialect counts, and the
-Standard-Amharic pool. Run from the workspace root after sourcing env.amh.sh."""
+"""
+Joint and SI split diagnostics: independence, overlap, dialect counts, and the
+Standard-Amharic pool. Run from the workspace root after sourcing env.amh.sh.
+"""
 from common import config as cfg  # must load before transformers/datasets
 
 import pandas as pd
@@ -32,9 +34,9 @@ for name, df in (("train", tr), ("val", va), ("test", te)):
     print(name, df.groupby("dialect").speaker_id.nunique().to_dict(),
           df.drop_duplicates("speaker_id").gender.value_counts().to_dict())
 
-# SI split rebuilt from the metadata parquet 
-# Speaker IDs in the parquet use "_" and "::" differently from the cache,
-# so both sides are normalized to one key format before matching.
+"""SI split rebuilt from the metadata parquet 
+ Speaker IDs in the parquet use "_" and "::" differently from the cache,
+so both sides are normalized to one key format before matching."""
 meta = pd.read_parquet(META_PATH)
 key = lambda s: s.str.replace("::", "_").str.replace(" ", "_")
 meta["key"] = key(meta.speaker)
@@ -65,8 +67,7 @@ print("missing values:", sm.isna().sum().to_dict())
 print("split:", sm.split.value_counts(dropna=False).to_dict())
 print("dialect:", sm.dialect.value_counts(dropna=False).to_dict())
 
-# Does the Joint guarantee cover the Standard data? Decode labels and compare
-# with Leyu validation and test text.
+# Does the Joint guarantee cover the Standard data? Decode labels and compare with Leyu validation and test text.
 tok = WhisperTokenizer.from_pretrained(cfg.WHISPER_MODEL)
 labels = std.select_columns(["labels"])["labels"]
 std_text = [tok.decode([i for i in x if i >= 0], skip_special_tokens=True).strip() for x in labels]

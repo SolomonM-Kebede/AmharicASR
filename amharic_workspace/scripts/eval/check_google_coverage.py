@@ -1,4 +1,5 @@
-"""Checks that Google Speech-to-Text output covers exactly the test recordings
+"""
+Checks that Google Speech-to-Text output covers exactly the test recordings
 sent to its synchronous API: those of at most GOOGLE_MAX_SYNC_SECONDS (55 s).
 
 Expected for the thesis: 4,588 manifest rows, 4,198 at or below 55 s, 4,198

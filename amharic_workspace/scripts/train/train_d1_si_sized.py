@@ -1,6 +1,6 @@
 
 """
-Amharic ASR — Joint (Speaker + Text) Independent Ablation, Leyu-only
+Amharic ASR: Joint (Speaker + Text) Independent Ablation, Leyu-only
 Dataset : dataset_cache_joint_independent (0 speaker overlap, ~99.5%+ text independence)
 Model   : Phase 1 merged base + fresh LoRA adapter
 """

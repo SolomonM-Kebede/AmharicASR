@@ -1,6 +1,6 @@
 
 """
-Amharic ASR — RQ3 completion: FULL FINE-TUNE (no LoRA) on the joint
+Amharic ASR: RQ3 completion: FULL FINE-TUNE (no LoRA) on the joint
 speaker+text-independent split, matched to the best LoRA arm
 (Raw+ALFFA+CV, 32.06% WER) for a clean LoRA-vs-full-fine-tune comparison.
 """

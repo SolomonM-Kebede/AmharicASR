@@ -1,4 +1,5 @@
-"""Decode-configuration diagnostic for the Phase 2 merged model. No training.
+"""
+Decode-configuration diagnostic for the Phase 2 merged model. No training.
 
 Runs the merged model on a subsample of the Leyu test set under four decoding
 configurations, a 2x2 over decoding strategy (greedy, beam 5) and repetition
@@ -16,7 +17,7 @@ How to read the result:
 This is a diagnostic on a subsample, not a reported result.
 Run from the workspace root after sourcing env.amh.sh.
 """
-from common import config as cfg  # must load before transformers/datasets
+from common import config as cfg  
 
 import json
 import os

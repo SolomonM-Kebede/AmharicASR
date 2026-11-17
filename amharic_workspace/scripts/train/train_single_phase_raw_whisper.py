@@ -1,12 +1,10 @@
 """
-Amharic ASR — Single-Phase Joint Training (Leyu + ALFFA + CV) from raw Whisper large-v3
+Amharic ASR: Single-Phase Joint Training (Leyu + ALFFA + CV) from raw Whisper large-v3
 Comparison arm: isolates the effect of the Phase 1 curriculum step by holding
 data composition, split methodology, and LoRA config identical to Phase 2b,
 varying only the starting checkpoint (raw Whisper vs. Phase1_merged).
 """
 
-# Config sets the Hugging Face cache and offline flags. It must load before
-# transformers and datasets, so it comes first among the project imports.
 from common import config as cfg  # must load before transformers/datasets
 
 import io

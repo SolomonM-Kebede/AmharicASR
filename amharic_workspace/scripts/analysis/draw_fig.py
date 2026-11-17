@@ -1,4 +1,5 @@
-"""Figures for RQ3 and the per-dialect comparison, computed from the per-utterance files.
+"""
+Figures for RQ3 and the per-dialect comparison, computed from the per-utterance files.
 
 Every bar is computed here with the counting used by run_bootstrap.py, from
 results/persample/. Dialect labels come from the Joint test split, indexed by
@@ -8,8 +9,7 @@ in the thesis; the script stops if any differs.
 Writes figures/fig_rq3.png and figures/fig_per_dialect.png. Run from the workspace
 root after sourcing env.amh.sh.
 """
-from common import config as cfg  # must load before transformers/datasets
-
+from common import config as cfg  
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt

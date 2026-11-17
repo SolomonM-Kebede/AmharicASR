@@ -1,4 +1,5 @@
-"""Character check for the shared normalization (data.normalize).
+"""
+Character check for the shared normalization (data.normalize).
 
 Counts characters in the normalized Leyu text (all splits of the Joint cache) and in the
 normalized Standard-Amharic training labels, and reports:

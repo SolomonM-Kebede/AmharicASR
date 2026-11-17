@@ -1,4 +1,5 @@
-"""Evaluate a full fine-tuned Whisper model on the Leyu test set.
+"""
+Evaluate a full fine-tuned Whisper model on the Leyu test set.
 
 One script covers both splits and both inference precisions:
   --split joint   Joint test set (speaker- and text-independent)

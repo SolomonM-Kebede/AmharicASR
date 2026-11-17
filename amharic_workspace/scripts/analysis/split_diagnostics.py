@@ -1,4 +1,5 @@
-"""Split and graph diagnostics for the Leyu corpus.
+"""
+Split and graph diagnostics for the Leyu corpus.
 
 Recomputes the figures in the split-diagnostics appendix from leyu_meta_raw.parquet
 (normalized text per utterance) and the Joint cache:
@@ -11,7 +12,7 @@ Recomputes the figures in the split-diagnostics appendix from leyu_meta_raw.parq
 
 Writes splits/split_diagnostics.json. Run from the workspace root after sourcing env.amh.sh.
 """
-from common import config as cfg  # must load before transformers/datasets
+from common import config as cfg  
 
 import json
 from collections import Counter

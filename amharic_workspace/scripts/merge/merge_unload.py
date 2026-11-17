@@ -1,7 +1,7 @@
 
 """
-Amharic ASR — Fix the merge (fp32) and run the REAL final RQ2 evaluation
-============================================================================
+Amharic ASR: Fix the merge (fp32) and run the fixed final RQ2 evaluation
+
 Diagnostic confirmed: merge_and_unload() on a bf16-loaded base model
 downcasts the trained LoRA delta into bf16 before permanently storing it,
 discarding precision the unmerged model never loses. Fix: reload the base
@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
 
-from common import config as cfg  # must load before transformers/datasets
+from common import config as cfg  
 import torch
 from datasets import load_from_disk
 from transformers import (
@@ -53,7 +53,7 @@ processor = WhisperProcessor.from_pretrained(PHASE1_MERGED, language="amharic", 
 DECODER_START_TOKEN_ID = processor.tokenizer.convert_tokens_to_ids("<|startoftranscript|>")
 forced_ids = processor.get_decoder_prompt_ids(language="amharic", task="transcribe", no_timestamps=True)
 
-# ── Fix: reload base in fp32, reattach saved adapter, merge in fp32 ────────
+# Fix: reload base in fp32, reattach saved adapter, merge in fp32
 print(f"\nLoading base model in fp32 from {PHASE1_MERGED} ...")
 base_fp32 = WhisperForConditionalGeneration.from_pretrained(PHASE1_MERGED)
 
@@ -67,7 +67,7 @@ merged.save_pretrained(FIXED_MERGED_DIR)
 processor.save_pretrained(FIXED_MERGED_DIR)
 print(f"Corrected merged model saved to {FIXED_MERGED_DIR}")
 
-# ── Real final eval — full test set, established winning decode config ────
+# Real final eval full test set
 print("\nLoading corrected merged model for evaluation ...")
 eval_model = merged.to("cuda").eval()
 eval_model.generation_config = GenerationConfig(

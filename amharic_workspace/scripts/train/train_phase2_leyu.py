@@ -1,6 +1,6 @@
 
 """
-Amharic ASR — Phase 2 Leyu Dialect Adaptation with resume capability from the last checkpoint
+Amharic ASR: Phase 2 Leyu Dialect Adaptation with resume capability from the last checkpoint
 Dataset : Leyu Amharic dialect(Gojjam, Gonder, Wello, Shewa + Addis Ababa), expanded corpus
 Model   : Merged Phase 1 model + fresh LoRA adapter
 """

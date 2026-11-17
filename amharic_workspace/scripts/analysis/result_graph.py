@@ -1,4 +1,5 @@
-"""Overview of all systems on the Leyu test set: WER and CER for each system.
+"""
+Overview of all systems on the Leyu test set: WER and CER for each system.
 
 Every bar comes from a committed source:
   persample  a file in results/persample/: WER and CER computed here, with the
@@ -14,7 +15,7 @@ number reaches the figure.
 Writes figures/fig_all_runs.png and .pdf. Run from the workspace root after
 sourcing env.amh.sh.
 """
-from common import config as cfg  # keep first
+from common import config as cfg  
 
 import json
 from dataclasses import dataclass

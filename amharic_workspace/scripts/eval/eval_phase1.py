@@ -1,4 +1,5 @@
-"""Phase 1 evaluation: the Standard-Amharic merged checkpoint on the Leyu test set.
+"""
+Phase 1 evaluation: the Standard-Amharic merged checkpoint on the Leyu test set.
 
 Reports per-dialect and overall WER and CER, and writes the per-utterance file
 (orig_idx, dialect, reference, prediction) in results/persample/.

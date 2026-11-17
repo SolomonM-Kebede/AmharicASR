@@ -1,4 +1,5 @@
-"""Per-dialect paired comparison of two systems on the Joint test set.
+"""
+Per-dialect paired comparison of two systems on the Joint test set.
 
 Uses the pairing, counting and resampling of run_bootstrap.py (both from
 common/bootstrap_utils.py). Each dialect is resampled with its own generator,

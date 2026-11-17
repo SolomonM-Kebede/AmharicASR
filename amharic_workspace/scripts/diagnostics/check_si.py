@@ -1,12 +1,11 @@
-"""Diagnostics for the Joint and SI splits, the Standard-Amharic pool, and the
+"""
+Diagnostics for the Joint and SI splits, the Standard-Amharic pool, and the
 normalized text. Run from the workspace root after sourcing env.amh.sh.
 
 Each section prints the figure the thesis states in its comment, so a
 mismatch is visible at once.
 """
-from common import config as cfg  # must load before transformers/datasets
-
-import collections
+from common import config as cfg  
 import json
 import re
 
@@ -50,16 +49,16 @@ def corpus_wer(refs, hyps):
     return 100.0 * errors / words
 
 
-# ── Load the Joint split ─────────────────────────────────────────────────────
+# Load the Joint split 
 jt = {k: v.select_columns(["speaker_id", "dialect", "text", "norm_text"]).to_pandas()
       for k, v in load_from_disk(str(JOINT_CACHE)).items()}
 tr, va, te = jt["train"], jt["validation"], jt["test"]
 
-# ── 0. The shared normalizer reproduces the cached text (expect 1.0) ─────────
+# The shared normalizer reproduces the cached text 
 agree = (te.text.map(normalize_amharic) == te.norm_text.str.strip()).mean()
 print(f"0. normalizer agrees with cached norm_text on test: {agree:.4f}")
 
-# ── 1. Joint split: independence and overlap ─────────────────────────────────
+# Joint split: independence and overlap 
 print("\n1. Joint split")
 print("   utterances  train/val/test:", len(tr), len(va), len(te))
 print("   speakers    train/val/test:",
@@ -74,7 +73,7 @@ print("   validation & test shared prompts:", len(T_va & T_te), "(thesis: 2,005)
 print("   test utterances with text in validation: %.3f (thesis: 0.67)"
       % te.norm_text.isin(T_va).mean())
 
-# ── 2. SI split rebuilt from the metadata ────────────────────────────────────
+# SI split rebuilt from the metadata 
 meta = pd.read_parquet(META_PATH)
 meta["key"] = speaker_key(meta.speaker)
 meta["dialect"] = meta.key.str.rsplit("_", n=1).str[0].str.replace("_", " ")
@@ -99,7 +98,7 @@ print("   test utterances, raw text in SI train: %.3f"
 print("   test utterances, text in Joint train: %.3f (should be 0)"
       % te.norm_text.isin(T_tr).mean())
 
-# ── 3. Per-dialect training counts, SI vs Joint (thesis: dialect table) ──────
+# Per-dialect training counts, SI vs Joint (thesis: dialect table)
 print("\n3. Per-dialect training counts")
 table = pd.DataFrame({
     "SI_speakers": si_train.groupby("dialect").key.nunique(),
@@ -110,7 +109,7 @@ table = pd.DataFrame({
 table["removed_pct"] = 100 * (1 - table.Joint_train / table.SI_train)
 print(table.round(1).to_string())
 
-# ── 4. Cache text vs metadata text ───────────────────────────────────────────
+# Cache text vs metadata text 
 print("\n4. Cache text vs metadata text")
 print("   test utterances whose raw text occurs in metadata: %.3f"
       % te.text.isin(set(meta.text)).mean())
@@ -134,7 +133,7 @@ print("   more frequent in cache   :",
 print("   more frequent in metadata:",
       [hex(ord(ch)) for ch, _ in (c_meta - c_cache).most_common(8)])
 
-# ── 5. Ethiopic word separator and WER with marks removed ────────────────────
+# Ethiopic word separator and WER with marks removed
 print("\n5. Ethiopic marks")
 for ch in MARKS:
     survives = ch in normalize_amharic("ቃል" + ch + "ቃል")
@@ -155,7 +154,7 @@ for label, path in PERSAMPLE.items():
     print(f"   {label}: as reported {as_reported:.2f} | marks removed {stripped:.2f}"
           f" | difference {stripped - as_reported:+.2f}")
 
-# ── 6. Standard-Amharic pool ─────────────────────────────────────────────────
+# Standard-Amharic pool 
 print("\n6. Standard-Amharic pool")
 std = load_from_disk(str(STANDARD_CACHE))
 sm = std.select_columns(["utterance_id", "speaker_id", "split", "dialect"]).to_pandas()
@@ -172,7 +171,7 @@ held_text = T_va | T_te
 print("   Standard utterances whose normalized text occurs in Leyu validation or test:",
       sum(t in held_text for t in std_text), "(expect 0)")
 
-# ── 7. Full fine-tuning training set ─────────────────────────────────────────
+# Full fine-tuning training set
 print("\n7. Full fine-tuning training set")
 ft = load_from_disk(str(FULLFT_CACHE))["train"].select_columns(["dialect"]).to_pandas()
 print(f"   utterances: {len(ft):,} (thesis: 20,592)")

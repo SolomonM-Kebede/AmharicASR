@@ -1,4 +1,5 @@
-"""Reproduces the Common Voice part of the C2/C3 training sample.
+"""
+Reproduces the Common Voice part of the C2/C3 training sample.
 
 Builds the five-file Common Voice pool used by train_joint_composition.py,
 applies the same quota and Hugging Face shuffle, and reports the number of
@@ -7,7 +8,7 @@ repeated rows in the sample. Expected values are the ones in Section 4.2:
 
 Run from the workspace root after sourcing env.amh.sh.
 """
-from common import config as cfg  # must load before transformers/datasets
+from common import config as cfg  
 from pathlib import Path
 import pandas as pd
 from datasets import Audio, Dataset

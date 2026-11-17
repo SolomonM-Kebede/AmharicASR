@@ -1,6 +1,7 @@
-"""Test-set evaluation of a full fine-tuned Whisper model on the Joint split.
+"""
+Test-set evaluation of a full fine-tuned Whisper model on the Joint split.
 
-Writes one per-utterance file (orig_idx, dialect, reference, prediction) and one
+It will write one per-utterance file (orig_idx, dialect, reference, prediction) and one
 summary file. The per-utterance file is what run_bootstrap.py reads.
 
 Defaults reproduce C4: full fine-tuning, FP16 stored weights, bfloat16 inference,
@@ -10,7 +11,7 @@ Existing outputs are not replaced unless --overwrite is given.
 
 Run from the workspace root after sourcing env.amh.sh.
 """
-from common import config as cfg  # must load before transformers/datasets
+from common import config as cfg  
 
 import argparse
 import json

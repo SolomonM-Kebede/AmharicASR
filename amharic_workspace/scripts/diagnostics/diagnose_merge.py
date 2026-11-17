@@ -1,4 +1,5 @@
-"""Does merging the LoRA adapter change decoded output? (Phase 2b model)
+"""
+Does merging the LoRA adapter change decoded output? (Phase 2b model)
 
 Three arms on the same test subsample with the same decoding settings:
   A  merged checkpoint, bf16 weights (the form used for reported evaluations)

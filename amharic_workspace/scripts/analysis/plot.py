@@ -1,4 +1,5 @@
-"""Training curves for the runs in the thesis.
+"""
+Training curves for the runs in the thesis.
 
   python scripts/analysis/plot.py --extract
       Reads the Slurm logs in slurm_logs/<run>/ (local only) and writes one JSON file
@@ -49,7 +50,7 @@ STYLES = ["-", "--", "-.", ":", (0, (5, 1)), (0, (1, 1))]
 DICT_RE = re.compile(r"\{'[^{}]*\}")
 
 
-# ---------- step 1: extract from the Slurm logs (run once) ----------
+# extract from the Slurm logs 
 
 def job_number(path):
     return int(re.findall(r"\d+", path.stem)[-1])
@@ -109,7 +110,7 @@ def extract():
         print(f"[WROTE] {out.name}: {len(entries)} entries from {source}")
 
 
-# ---------- step 2: draw from the committed JSON ----------
+# or draw from the committed JSON (for previous runs before slurm)
 
 def load_history(folder):
     path = HISTORY_DIR / f"{folder}.json"

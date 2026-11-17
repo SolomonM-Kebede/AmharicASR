@@ -1,4 +1,5 @@
-"""Test-set evaluation of the text-independent LoRA run (B1).
+"""
+Test-set evaluation of the text-independent LoRA run (B1).
 
 The text-independent split guarantees that no test text occurs in training.
 It does not hold out speakers: all 273 test speakers also appear in training,

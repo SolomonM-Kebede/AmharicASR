@@ -1,4 +1,5 @@
-"""Paired bootstrap for the corpus-level WER difference between two systems.
+"""
+Paired bootstrap for the corpus-level WER difference between two systems.
 
 delta = WER(X) - WER(Y), in percentage points.
 A positive delta means Y has the lower WER.

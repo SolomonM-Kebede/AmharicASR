@@ -1,4 +1,5 @@
-"""Zero-shot Whisper Large-v3 (no fine-tuning) on the Leyu test set.
+"""
+Zero-shot Whisper Large-v3 (no fine-tuning) on the Leyu test set.
 
 Reads the audio and references written by export_test_audio.py, so this system
 and the Google system are scored on the same recordings. Writes
@@ -47,7 +48,7 @@ def read_manifest(path):
     if len(rows) != EXPECTED_TOTAL:
         raise SystemExit(f"manifest has {len(rows)} rows, expected {EXPECTED_TOTAL}")
     for i, r in enumerate(rows):
-        r["orig_idx"] = i  # position in the manifest; the same index the bootstrap uses
+        r["orig_idx"] = i  # position in the manifest, the same index the bootstrap uses
     return rows
 
 

@@ -1,4 +1,5 @@
-"""Project paths and Hugging Face settings.
+"""
+Project paths and Hugging Face settings.
 
 Machine-specific locations come from environment variables (see env.amh.sh).
 Import this module before transformers or datasets: it sets the Hugging Face

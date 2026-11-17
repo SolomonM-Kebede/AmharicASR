@@ -1,4 +1,5 @@
-"""Duration check for the Common Voice training split used in this thesis.
+"""
+Duration check for the Common Voice training split used in this thesis.
 
 Reports the clip count, speaker count, and audio hours for train.tsv, which
 the Corpora table lists as 553 clips and 0.93 hours, and for the whole release.

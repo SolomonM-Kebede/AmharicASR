@@ -1,7 +1,6 @@
 
 """
 Amharic ASR — RQ3: Full fine-tuning vs LoRA
-================================================================================
 Controlled comparison against the Leyu-only LoRA baseline. Same warm-start 
 (Phase 1 merged model), same Leyu-only speaker-independent splits, same 
 hyperparameters where applicable — the ONLY thing that changes is: every 
@@ -32,7 +31,7 @@ from transformers import (
 )
 from transformers.trainer_utils import get_last_checkpoint
 
-from data.normalize import normalize_amharic  # shared normalization; do not redefine here
+from data.normalize import normalize_amharic  
 
 # Paths, all from config
 PHASE1_MERGED = cfg.PHASE1_MERGED

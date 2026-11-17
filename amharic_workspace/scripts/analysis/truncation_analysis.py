@@ -1,4 +1,5 @@
-"""Truncation and reference-coverage analysis of the full test set.
+"""
+Truncation and reference-coverage analysis of the full test set.
 
 Uses the bf16 per-sample predictions of C4b. Four parts:
   1. How much of each recording the 30 s window and the 448-token reference cover.
@@ -11,7 +12,7 @@ unless the subset of recordings that fit both limits has exactly 688 members.
 Pass --examples to print the highest-insertion and most-deleted utterances.
 Run from the workspace root after sourcing env.amh.sh.
 """
-from common import config as cfg  # must load before transformers/datasets
+from common import config as cfg  
 
 import argparse
 import collections

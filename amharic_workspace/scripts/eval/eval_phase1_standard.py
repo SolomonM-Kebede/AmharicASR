@@ -1,4 +1,5 @@
-"""Phase 1 on its own held-out Standard-Amharic test set (1,087 utterances).
+"""
+Phase 1 on its own held-out Standard-Amharic test set (1,087 utterances).
 
 This produces the 25.91% WER (7.51% CER) reported for Phase 1 on Standard Amharic.
 The test set is ALFFA-only: the earlier provenance check found no Common Voice
